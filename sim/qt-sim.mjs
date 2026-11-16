@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // qt-sim — the QuickTooth taskbar simulator's command line. See sim/README.md.
 import { readFile, readdir, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -12,14 +12,14 @@ import { runChecks } from './lib/checks.mjs';
 
 const HELP = `qt-sim — Windows 11 taskbar + QuickTooth tray simulator (Playwright Chromium)
 
-  node qt-sim.mjs shot      [steps…] [--region tray|screen|taskbar|icon|x,y,w,h] [--zoom N] [--out file.png]
-  node qt-sim.mjs run       <scenario.json|name> [--out dir] [--headed]
-  node qt-sim.mjs frames    [--phase all|Connecting|Landing|Disconnecting|Cancelling] [--size 16] [--zoom 8] [--compare] [--out dir]
-  node qt-sim.mjs parity    [--no-build] [--out dir]       icon renderer vs the real QuickTooth.exe --render-icons
-  node qt-sim.mjs menu-check [--out dir]                   menu vs real Win32 menu captures
-  node qt-sim.mjs test      [--no-build] [--skip-parity]   everything: parity, menu, geometry, pixels, scenarios
-  node qt-sim.mjs open      [options]                      interactive window with a control panel
-  node qt-sim.mjs doctor                                   show the browser in use
+  bun qt-sim.mjs shot      [steps…] [--region tray|screen|taskbar|icon|x,y,w,h] [--zoom N] [--out file.png]
+  bun qt-sim.mjs run       <scenario.json|name> [--out dir] [--headed]
+  bun qt-sim.mjs frames    [--phase all|Connecting|Landing|Disconnecting|Cancelling] [--size 16] [--zoom 8] [--compare] [--out dir]
+  bun qt-sim.mjs parity    [--no-build] [--out dir]       icon renderer vs the real QuickTooth.exe --render-icons
+  bun qt-sim.mjs menu-check [--out dir]                   menu vs real Win32 menu captures
+  bun qt-sim.mjs test      [--no-build] [--skip-parity]   everything: parity, menu, geometry, pixels, scenarios
+  bun qt-sim.mjs open      [options]                      interactive window with a control panel
+  bun qt-sim.mjs doctor                                   show the browser in use
 
 Steps (shot), applied in order:  --hover icon  --click icon  --rclick icon  --wait 600  --key Escape
                                  --cli --toggle  --bt externalConnect,"AirPods Pro"  --tune-step Travel=2.4
@@ -63,7 +63,7 @@ function parseArgs(argv) {
     const values = ['scale', 'screen', 'theme', 'style', 'profile', 'seed', 'timer-quantum', 'tune', 'variant', 'settle', 'region', 'zoom', 'out', 'phase', 'size'];
     if (bools.includes(k)) { opt[k] = true; continue; }
     // A typo must not quietly produce a confident, wrong screenshot.
-    if (!values.includes(k)) throw new Error(`unknown option --${k} (see: node qt-sim.mjs help)`);
+    if (!values.includes(k)) throw new Error(`unknown option --${k} (see: bun qt-sim.mjs help)`);
     const v = next();
     if (v === undefined) throw new Error(`--${k} needs a value`);
     opt[k] = v;

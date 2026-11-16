@@ -35,6 +35,11 @@ Check the relevant entries before changing a behaviour or look; don't reintroduc
 
 ## Simulator
 
+- **Node and npm to run the simulator**: replaced by Bun (`bun install`, `bun qt-sim.mjs`). Bun
+  1.3.8 hung in Playwright's Chromium launch on Windows, over the pipe and over `connectOverCDP`;
+  1.4.4 passes the whole suite, so the launcher refuses anything older. pnpm was the fallback and
+  isn't needed.
+
 - **JavaScript copies of the renderer and tray logic**, kept in step by parity checks: replaced by
   the shared C# core compiled to WebAssembly. JavaScript `--variant` sketches went with them;
   `--tune` stays.

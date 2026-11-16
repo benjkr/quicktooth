@@ -16,7 +16,7 @@ working rules and the specs current in the same change as the code.
   simulator's WebAssembly build (`src/QuickTooth.Web`) only adapt the platform. Never copy core
   logic into JavaScript or a host ([architecture](docs/working/architecture.md)).
 - **Show it in the simulator before it ships.** A change to what the tray looks like or does is
-  previewed from `sim/` (stills, recordings, before/after), and `node qt-sim.mjs test` passes on
+  previewed from `sim/` (stills, recordings, before/after), and `bun qt-sim.mjs test` passes on
   the final code.
 - **Only the target device is ever sent anything.** Connect/disconnect goes to the stored target
   only (container ID, then MAC), never "the first headset". Other paired devices must never receive
@@ -45,7 +45,7 @@ working rules and the specs current in the same change as the code.
   never give two agents the same files.
 - Search first (`rg`) and read the section you need; batch independent calls; keep bulky output
   out of context (logs to files, `| tail`). Don't re-plan settled decisions.
-- In the foreground: native AOT publish (~1 min), `node qt-sim.mjs test` (~1 min), browser core
+- In the foreground: native AOT publish (~1 min), `bun qt-sim.mjs test` (~1 min), browser core
   build (5–10 s). In the background, with `t3_background_wait`: real-time recordings and anything
   longer. Never sleep-poll.
 - Edit with small targeted edits; a script only for one change across many files.
@@ -53,7 +53,7 @@ working rules and the specs current in the same change as the code.
 
 ## Verification and delivery
 
-- Core change: `node qt-sim.mjs test` on the final code. Windows host or device code (the
+- Core change: `bun qt-sim.mjs test` on the final code. Windows host or device code (the
   simulator doesn't run it): the native read-only checks in the [testing spec](docs/specs/testing.md).
 - A refactor that shouldn't change behaviour: record every scenario's log, timeline and final
   state before, and diff them after (identical, line for line).
