@@ -1,4 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 using System.Text.RegularExpressions;
 using QuickTooth.Native;
@@ -50,7 +52,7 @@ internal sealed class Snapshot
 /// (the approach used by ToothTray). Every method must run on the same MTA thread
 /// (<see cref="DeviceWorker"/>).
 /// </summary>
-internal sealed class BluetoothAudio
+internal sealed partial class BluetoothAudio
 {
     private static readonly Regex MacRegex = new(@"&([0-9a-f]{12})_c[0-9a-f]+#", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
@@ -204,13 +206,14 @@ internal sealed class BluetoothAudio
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         int hr = Enumerator.EnumAudioEndpoints(EDataFlow.eRender, CoreAudio.DEVICE_STATEMASK_ALL, out var collection);
         if (hr != 0) throw new COMException("EnumAudioEndpoints failed", hr);
+        if (collection == null) throw new COMException("EnumAudioEndpoints returned no collection");
         com.Add(collection);
         collection.GetCount(out uint count);
         for (uint i = 0; i < count; i++)
         {
             if (collection.Item(i, out var device) != 0 || device == null) continue;
             com.Add(device);
-            if (device.GetId(out string id) == 0 && id != null) seen.Add(id);
+            if (device.GetId(out string? id) == 0 && id != null) seen.Add(id);
             yield return (device, false);
         }
 
@@ -250,7 +253,7 @@ internal sealed class BluetoothAudio
 
     private BtEndpoint? ReadEndpoint(IMMDevice device, bool hidden, ComBag com, bool probeKs, List<OtherEndpoint>? others)
     {
-        device.GetId(out string id);
+        if (device.GetId(out string? id) != 0 || id == null) return null;
         device.GetState(out uint state);
         string name = ReadString(device, com, CoreAudio.PKEY_Device_FriendlyName) ?? id;
         var bthIds = BluetoothTopologyIds(device, com, out var allIds);
@@ -276,9 +279,10 @@ internal sealed class BluetoothAudio
         var bth = new List<string>();
         allIds = new List<string>();
         var iid = CoreAudio.IID_IDeviceTopology;
-        if (device.Activate(ref iid, CoreAudio.CLSCTX_ALL, IntPtr.Zero, out var topoObj) != 0 || topoObj is not IDeviceTopology topo)
+        if (device.Activate(ref iid, CoreAudio.CLSCTX_ALL, IntPtr.Zero, out var topoPtr) != 0 ||
+            CoreAudio.Wrap<IDeviceTopology>(topoPtr) is not { } topo)
             return bth;
-        com.Add(topoObj);
+        com.Add(topo);
         if (topo.GetConnectorCount(out uint n) != 0) return bth;
         for (uint c = 0; c < n; c++)
         {
@@ -289,7 +293,7 @@ internal sealed class BluetoothAudio
             if (other is not IPart part) continue; // QueryInterface(IPart)
             if (part.GetTopologyObject(out var otherTopo) != 0 || otherTopo == null) continue;
             com.Add(otherTopo);
-            if (otherTopo.GetDeviceId(out string devId) != 0 || devId == null) continue;
+            if (otherTopo.GetDeviceId(out string? devId) != 0 || devId == null) continue;
             allIds.Add(devId);
             if (devId.StartsWith(@"{2}.\\?\bth", StringComparison.OrdinalIgnoreCase)) bth.Add(devId);
         }
@@ -302,9 +306,9 @@ internal sealed class BluetoothAudio
         if (hr != 0 || ksDevice == null) return null;
         com.Add(ksDevice);
         var iid = CoreAudio.IID_IKsControl;
-        hr = ksDevice.Activate(ref iid, CoreAudio.CLSCTX_ALL, IntPtr.Zero, out var ksObj);
-        if (hr != 0 || ksObj is not IKsControl ks) return null;
-        com.Add(ksObj);
+        hr = ksDevice.Activate(ref iid, CoreAudio.CLSCTX_ALL, IntPtr.Zero, out var ksPtr);
+        if (hr != 0 || CoreAudio.Wrap<IKsControl>(ksPtr) is not { } ks) return null;
+        com.Add(ks);
         return ks;
     }
 
@@ -325,7 +329,7 @@ internal sealed class BluetoothAudio
         finally { CoreAudio.PropVariantClear(ref pv); }
     }
 
-    private static bool OpenStore(IMMDevice device, ComBag com, out IPropertyStore store)
+    private static bool OpenStore(IMMDevice device, ComBag com, [NotNullWhen(true)] out IPropertyStore? store)
     {
         if (device.OpenPropertyStore(CoreAudio.STGM_READ, out store) != 0 || store == null) return false;
         com.Add(store);
@@ -342,28 +346,66 @@ internal sealed class BluetoothAudio
         return open >= 0 && n.EndsWith(')') ? n[(open + 1)..^1] : n;
     }
 
-    /// <summary>Releases RCWs deterministically so KS filter handles don't pile up until a GC.</summary>
+    /// <summary>
+    /// Releases COM wrappers deterministically so KS filter handles don't pile up until a GC.
+    /// Every interface we receive is a unique instance (see CoreAudio), which FinalRelease frees,
+    /// including interfaces reached through a cast (QueryInterface) on it.
+    /// </summary>
     private sealed class ComBag
     {
-        private readonly List<object> _items = new();
-        public void Add(object? o) { if (o != null && Marshal.IsComObject(o)) _items.Add(o); }
+        private readonly List<ComObject> _items = new();
+        public void Add(object? o) { if (o is ComObject c) _items.Add(c); }
         public void ReleaseAll()
         {
             for (int i = _items.Count - 1; i >= 0; i--)
             {
-                try { Marshal.FinalReleaseComObject(_items[i]); } catch { }
+                try { _items[i].FinalRelease(); } catch { }
             }
             _items.Clear();
         }
     }
 
-    [ComVisible(true)]
-    private sealed class NotificationClient(BluetoothAudio owner) : IMMNotificationClient
+    [GeneratedComClass]
+    private sealed partial class NotificationClient(BluetoothAudio owner) : IMMNotificationClient
     {
-        public int OnDeviceStateChanged(string id, uint newState) { owner.EndpointChanged?.Invoke(id); return 0; }
-        public int OnDeviceAdded(string id) { owner.EndpointChanged?.Invoke(id); return 0; }
-        public int OnDeviceRemoved(string id) { owner.EndpointChanged?.Invoke(id); return 0; }
-        public int OnDefaultDeviceChanged(EDataFlow flow, ERole role, string? id) => 0;
-        public int OnPropertyValueChanged(string id, PROPERTYKEY key) => 0;
+        public int OnDeviceStateChanged(string id, uint newState) { owner.Notified(); owner.EndpointChanged?.Invoke(id); return 0; }
+        public int OnDeviceAdded(string id) { owner.Notified(); owner.EndpointChanged?.Invoke(id); return 0; }
+        public int OnDeviceRemoved(string id) { owner.Notified(); owner.EndpointChanged?.Invoke(id); return 0; }
+        public int OnDefaultDeviceChanged(EDataFlow flow, ERole role, string? id) { owner.Notified(); return 0; }
+        public int OnPropertyValueChanged(string id, PROPERTYKEY key) { owner.Notified(); return 0; }
+    }
+
+    private int _notifications;
+    private void Notified() => Interlocked.Increment(ref _notifications);
+
+    /// <summary>Callbacks received from the audio service so far (all kinds; diagnostics).</summary>
+    public int NotificationCount => Volatile.Read(ref _notifications);
+
+    /// <summary>
+    /// Test hook: calls our own callback object the way the audio service does, through its native
+    /// COM vtable (OnDeviceStateChanged, slot 3), and reports whether the managed handler saw the
+    /// same endpoint ID. Proves the generated COM callable wrapper works in this build.
+    /// </summary>
+    public unsafe bool SelfTestCallback()
+    {
+        var client = new NotificationClient(this);
+        string? seen = null;
+        void Handler(string id) => seen = id;
+        EndpointChanged += Handler;
+        void* p = ComInterfaceMarshaller<IMMNotificationClient>.ConvertToUnmanaged(client);
+        try
+        {
+            const string id = "{0.0.0.00000000}.{self-test}";
+            var vtbl = *(void***)p;
+            var onStateChanged = (delegate* unmanaged[Stdcall]<void*, char*, uint, int>)vtbl[3];
+            int hr;
+            fixed (char* s = id) hr = onStateChanged(p, s, CoreAudio.DEVICE_STATE_ACTIVE);
+            return hr == 0 && seen == id;
+        }
+        finally
+        {
+            ComInterfaceMarshaller<IMMNotificationClient>.Free(p);
+            EndpointChanged -= Handler;
+        }
     }
 }

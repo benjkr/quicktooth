@@ -50,12 +50,15 @@ Two smaller things help as well:
 
 ## Install
 
-You need Windows 11 (or Windows 10 2004+) and the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0).
+You need Windows 11 (or Windows 10 2004+). Nothing else: QuickTooth is a single native exe of about 5 MB, with no .NET runtime to install.
+
+To build it yourself you need the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and Visual Studio (or its Build Tools) with "Desktop development with C++", for the native linker.
 
 ```powershell
 git clone https://github.com/benjkr/quicktooth
 cd quicktooth
-.\publish.ps1    # builds and installs to %LOCALAPPDATA%\Programs\QuickTooth, then starts it
+.\publish.ps1            # builds and installs to %LOCALAPPDATA%\Programs\QuickTooth, then starts it
+.\installer\build.ps1    # or: builds dist\QuickTooth-Setup-<version>.exe (needs Inno Setup 6.7+)
 ```
 
 On first run QuickTooth:

@@ -1,7 +1,13 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace QuickTooth;
+
+[JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+[JsonSerializable(typeof(Settings))]
+internal sealed partial class SettingsJsonContext : JsonSerializerContext;
 
 /// <summary>Persisted in %APPDATA%\QuickTooth\settings.json.</summary>
 internal sealed class Settings
@@ -26,20 +32,25 @@ internal sealed class Settings
     [JsonIgnore]
     public bool HasTarget => TargetGuid != null || !string.IsNullOrEmpty(TargetMac);
 
-    private static readonly JsonSerializerOptions Options = new()
+    // Source-generated metadata (Native AOT has no reflection-based serializer).
+    private static readonly JsonTypeInfo<Settings> Json = (JsonTypeInfo<Settings>)new JsonSerializerOptions
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping, // keep "’" readable
-    };
+        TypeInfoResolver = SettingsJsonContext.Default,
+    }.GetTypeInfo(typeof(Settings));
 
-    public static Settings Load()
+    public static Settings Load() => Load(FilePath);
+
+    /// <summary>Loads settings from <paramref name="path"/> (the real file, or a copy for --settings-roundtrip).</summary>
+    public static Settings Load(string path)
     {
         try
         {
-            if (File.Exists(FilePath))
-                return JsonSerializer.Deserialize<Settings>(File.ReadAllText(FilePath), Options) ?? new Settings();
+            if (File.Exists(path))
+                return JsonSerializer.Deserialize(File.ReadAllText(path), Json) ?? new Settings();
         }
         catch (Exception ex)
         {
@@ -48,13 +59,15 @@ internal sealed class Settings
         return new Settings();
     }
 
+    public string ToJson() => JsonSerializer.Serialize(this, Json);
+
     public void Save()
     {
         try
         {
             System.IO.Directory.CreateDirectory(Directory);
             string tmp = FilePath + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(this, Options));
+            File.WriteAllText(tmp, ToJson());
             File.Move(tmp, FilePath, overwrite: true);
         }
         catch (Exception ex)
