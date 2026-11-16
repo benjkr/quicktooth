@@ -1,0 +1,12 @@
+{
+  "name": "explorer-restart",
+  "description": "Explorer restarts: the icon disappears and comes back via TaskbarCreated",
+  "options": {},
+  "steps": [
+    { "eval": "qt.restartExplorer()" },
+    { "wait": 100 },
+    { "expect": { "shell.explorerUp": false, "shell.icon": null } },
+    { "wait": 1600 },
+    { "expect": { "shell.explorerUp": true, "log": "TaskbarCreated: re-adding icon", "shell.iconInOverflow": false } }
+  ]
+}

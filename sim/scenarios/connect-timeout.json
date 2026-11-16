@@ -1,0 +1,14 @@
+{
+  "name": "connect-timeout",
+  "description": "headset never answers: 20 s timeout, cancel animation, back to not connected",
+  "options": { "profile": "unreachable" },
+  "steps": [
+    { "click": "icon" },
+    { "wait": 19500 },
+    { "expect": { "app.pending": "Connect" } },
+    { "wait": 700 },
+    { "expect": { "app.pending": null, "log": "Connect timed out after", "app.tooltip": "AirPods Pro — Not connected" } },
+    { "waitFor": "s.app.anim === null", "timeout": 1000 },
+    { "expect": { "app.icon.state": "disconnected", "app.timers.length": 2 } }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "reconnect-teardown",
+  "description": "disconnect then click again at once: the app waits for the old link to close, then connects",
+  "options": { "profile": "typical", "connected": true },
+  "steps": [
+    { "click": "icon" },
+    { "expect": { "app.pending": "Disconnect", "app.anim": "Disconnecting" } },
+    { "waitFor": "s.app.pending === null", "timeout": 3000 },
+    { "expect": { "app.tooltip": "AirPods Pro — Not connected", "bt.0.link": "lingering" } },
+    { "click": "icon" },
+    { "wait": 1000 },
+    { "expect": { "app.pending": "Connect", "logNot": "KsProperty ONESHOT_RECONNECT" } },
+    { "waitFor": "s.app.pending === null", "timeout": 10000 },
+    { "expect": { "app.tooltip": "AirPods Pro — Connected", "log": "for the previous link to close", "logNot": "stalls" } }
+  ]
+}

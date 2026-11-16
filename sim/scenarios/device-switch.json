@@ -1,0 +1,31 @@
+{
+  "name": "device-switch",
+  "description": "pick another headset in the Device submenu, connect it (battery from Windows), lose it (Not available), Exit",
+  "options": { "profile": "fast" },
+  "steps": [
+    { "rightClick": "icon" },
+    { "wait": 300 },
+    { "hover": "menu:Device" },
+    { "wait": 500 },
+    { "expect": { "shell.menu.1.items": ["✓ AirPods Pro", "Studio Headset"] } },
+    { "click": "menu:Studio Headset" },
+    { "expect": { "shell.menu": null, "log": "target set: Studio Headset", "app.tooltip": "Studio Headset — Not connected" } },
+    { "click": "icon" },
+    { "waitFor": "s.app.pending === null", "timeout": 5000 },
+    { "expect": { "app.tooltip": "Studio Headset — Connected · 70%", "log": "battery: 70% (Windows)", "bt.1.a2dp": "ACTIVE", "bt.0.a2dp": "UNPLUGGED" } },
+    { "bt": ["setPresent", "Studio Headset", false] },
+    { "waitFor": "s.app.tooltip === 'Studio Headset — Not available'", "timeout": 2000 },
+    { "rightClick": "icon" },
+    { "wait": 200 },
+    { "expect": { "shell.menu.0.items": ["Studio Headset — Not available (grayed)", "—", "Connect (grayed)", "Device ▸", "—", "Start with Windows", "Exit"] } },
+    { "hover": "menu:Device" },
+    { "wait": 500 },
+    { "expect": { "shell.menu.1.items": ["AirPods Pro", "✓ Studio Headset (not available) (grayed)"] } },
+    { "shot": "not-available-menu" },
+    { "key": "Escape" },
+    { "key": "Escape" },
+    { "rightClick": "icon" },
+    { "click": "menu:Exit" },
+    { "expect": { "app.running": false, "shell.icon": null, "log": "tray exit", "app.timers": [] } }
+  ]
+}

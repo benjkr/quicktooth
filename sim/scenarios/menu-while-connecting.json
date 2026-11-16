@@ -1,0 +1,16 @@
+{
+  "name": "menu-while-connecting",
+  "description": "menu during a connect: grayed status item and Device; the open menu is a snapshot and doesn't update",
+  "options": { "profile": "typical" },
+  "steps": [
+    { "click": "icon" },
+    { "wait": 300 },
+    { "rightClick": "icon" },
+    { "expect": { "shell.menu.0.items": ["AirPods Pro — Connecting… (grayed)", "—", "Connecting… (grayed)", "Device (grayed) ▸", "—", "Start with Windows", "Exit"] } },
+    { "waitFor": "s.app.pending === null", "timeout": 5000 },
+    { "expect": { "shell.menu.0.items.0": "AirPods Pro — Connecting… (grayed)", "app.tooltip": "AirPods Pro — Connected" } },
+    { "shot": "stale-menu" },
+    { "click": "200,200" },
+    { "expect": { "shell.menu": null, "app.pending": null } }
+  ]
+}

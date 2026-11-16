@@ -1,0 +1,21 @@
+{
+  "name": "demo-connect",
+  "description": "recorded walkthrough: hover, click to connect, landing, menu with the Device submenu",
+  "options": { "profile": "fast" },
+  "region": "tray",
+  "record": { "fps": 30, "zoom": 2 },
+  "steps": [
+    { "hover": "icon", "ms": 500 },
+    { "wait": 900 },
+    { "click": "icon" },
+    { "waitFor": "s.app.pending === null && s.app.anim === null", "timeout": 6000, "step": 33.333 },
+    { "wait": 900 },
+    { "rightClick": "icon" },
+    { "wait": 600 },
+    { "hover": "menu:Device", "ms": 350 },
+    { "wait": 900 },
+    { "key": "Escape" },
+    { "key": "Escape" },
+    { "wait": 500 }
+  ]
+}

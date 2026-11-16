@@ -1,0 +1,12 @@
+{
+  "name": "external-drop",
+  "description": "AirPods go back in the case: the icon follows within a few hundred ms (notification + debounce)",
+  "options": { "connected": true },
+  "steps": [
+    { "wait": 500 },
+    { "expect": { "app.icon.state": "connected" } },
+    { "bt": ["externalDisconnect", "AirPods Pro"] },
+    { "waitFor": "s.app.icon.state === 'disconnected'", "timeout": 2000 },
+    { "expect": { "app.tooltip": "AirPods Pro — Not connected", "app.pending": null, "app.anim": null } }
+  ]
+}

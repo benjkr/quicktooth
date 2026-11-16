@@ -1,0 +1,16 @@
+{
+  "name": "quicktooth-sim",
+  "private": true,
+  "description": "Browser simulator of the Windows 11 taskbar + QuickTooth tray icon, for testing visuals and behaviour without a real taskbar.",
+  "type": "module",
+  "bin": { "qt-sim": "./qt-sim.mjs" },
+  "scripts": {
+    "parity": "node qt-sim.mjs parity",
+    "test": "node qt-sim.mjs test",
+    "open": "node qt-sim.mjs open"
+  },
+  "devDependencies": {
+    "playwright": "1.60.0"
+  },
+  "engines": { "node": ">=20" }
+}

@@ -1,0 +1,82 @@
+{
+  "_about": "Every number the simulator uses for the shell, with where it came from. 'measured' = taken from the real system on the dev PC (Windows 11 build 26300, 1920×1080 at 100 % / 96 DPI, Nov 2026); 'extrapolated' = reasoned or scaled from measurements and not checked against the real thing. Re-measure with the probes in sim/reference/probe/.",
+
+  "taskbar": {
+    "status": "measured",
+    "source": "UI Automation BoundingRectangle of Shell_TrayWnd descendants at 100 %",
+    "height": 48,
+    "elements_left_width_px": {
+      "start": [850, 45], "taskView": [895, 44], "pinnedApp": [939, 44],
+      "showHiddenIcons_chevron": [1662, 32], "notifyIcon_QuickTooth": [1694, 32], "inputIndicator": [1726, 44],
+      "network": [1774, 24], "volume": [1802, 24], "clock": [1834, 70], "showDesktop": [1908, 12]
+    },
+    "notifyIconImage": { "rect": [1702, 1048, 16, 16], "note": "16 px icon at (+8, +16) inside its 32×48 button" },
+    "gaps_px": { "input→network": 4, "network→volume": 4, "volume→clock": 8, "clock→showDesktop": 4 },
+    "check": "qt-sim test → 'geometry vs UI Automation' must match all 12 elements exactly"
+  },
+
+  "otherScales": {
+    "status": "extrapolated",
+    "rule": "every DIP size × scale, rounded per element (XAML layout rounding); small icon = SM_CXSMICON = 16/20/24/28/32 px at 100/125/150/175/200 %",
+    "check": "qt-sim test → 'physical-pixel integrity' proves the icon reaches the screenshot unresampled at every scale; it does not prove Windows lays out the tray identically at those scales"
+  },
+
+  "popupMenu": {
+    "status": "measured",
+    "source": "probe/menuprobe.cs: a real TrackPopupMenuEx menu with QuickTooth's items, flags and dark/light preferred app mode; GetWindowRect, GetMenuItemRect, WM_PRINT render (menu/*.png, menu/*.json)",
+    "frame_px": 1, "padding_px": 2, "itemHeight_px": 22, "separatorHeight_px": 9, "separatorLineRow": 4, "separatorInsetX_px": 9,
+    "hoverRect": { "insetX_px": 6, "radius_px": "≈4 (anti-aliased corners in the capture)", "fullItemHeight": true, "disabledItemsHighlightToo": true },
+    "textOriginX_px": 38, "baselineFromItemTop_px": 15, "font": "Segoe UI 9 pt (12 px), GDI whole-pixel advances, no kerning",
+    "width": "38 + widest text + 60 (+1 if an item has a submenu arrow) — fitted to the two measured menus: 267 px and 230 px",
+    "placement": {
+      "main": "bottom = anchor y (TPM_BOTTOMALIGN), left = anchor x, clamped so the menu stays on the monitor (measured at anchors 1710,1032 / 1710,1056 / 900,1056)",
+      "submenuRight": "left = parent right − 6, top = item top − 3",
+      "submenuLeft": "right = parent left + 3 (when there's no room on the right)"
+    },
+    "colors": {
+      "dark": { "background": "#2C2C2C", "frame": "#808080", "text": "#FFFFFF", "disabled": "#6D6D6D", "hover": "#353535", "separator": "#3E3E3E", "glyph": "#F2F2F2" },
+      "light": { "background": "#F9F9F9", "frame": "#E5E5E5", "text": "#000000", "disabled": "#9F9F9F", "hover": "#F0F0F0", "separator": "#D7D7D7", "glyph": "#282828" }
+    },
+    "check": "qt-sim menu-check: sizes, item rects and placement must match exactly; non-text pixels mean |Δ| ≤ 1.5"
+  },
+
+  "popupMenuExtras": {
+    "status": "extrapolated",
+    "dwmCorners": "4 px radius (DWMWCP_ROUNDSMALL) + soft shadow — DWM effects don't appear in WM_PRINT and couldn't be captured while the PC was locked",
+    "fadeIn_ms": 150,
+    "submenuHoverDelay_ms": { "value": 400, "note": "SPI_GETMENUSHOWDELAY default (documented), not measured" }
+  },
+
+  "systemTimer": {
+    "status": "measured",
+    "source": "probe/timerprobe.cs: SetTimer(83 ms) — TrayApp's animation timer — on the dev PC",
+    "requested_ms": 83, "measuredMean_ms": 94.81, "min_ms": 89.13, "max_ms": 101.45, "intervals": 39,
+    "model": "interval = ceil(ms / 15.625) × 15.625 + 1.06 ms; so the real animation runs at ~10.5 fps, not 12"
+  },
+
+  "hoverAndTooltip": {
+    "status": "extrapolated (from the 1.5× demo video, docs/demo.mp4)",
+    "hoverPill": { "size_dip": [32, 40], "insetY_dip": 4, "radius_dip": 4, "dark": "white 6.05 %", "light": "black 3.73 %" },
+    "networkVolumeShareOnePill": true,
+    "tooltip": { "width_dip": "text + 18", "height_dip": 30, "gapAboveTaskbar_dip": 13, "centredOnButton": true, "dark": { "background": "#2C2C2C", "text": "#FFFFFF" }, "light": "not observed; WinUI defaults used" },
+    "tooltipDelay_ms": 500, "tooltipFadeIn_ms": 150, "hoverFade_ms": 83,
+    "afterClick": "tooltip hides on press and stays hidden until the pointer leaves the button (assumed)"
+  },
+
+  "overflowFlyout": {
+    "status": "extrapolated",
+    "cells_dip": 40, "padding_dip": 4, "radius_dip": 8, "gapAboveTaskbar_dip": 12,
+    "newIconsStartHidden": "Windows 11 behaviour; QuickTooth promotes itself once (TrayPromotion.cs). Explorer writing the NotifyIconSettings entry 1.2 s after NIM_ADD and reacting to IsPromoted at once are assumptions."
+  },
+
+  "bluetooth": {
+    "status": "measured (timings) / modelled (mechanism)",
+    "source": "the dev PC's real %APPDATA%\\QuickTooth\\quicktooth.log, AirPods Pro 3",
+    "connectConfirmed_ms": [1040, 1511, 1520, 1524, 1555, 1700, 2011, 2028, 2061, 2362, 2501, 2519, 2545, 3769, 4021, 4616, 6574, 9020, 13047],
+    "disconnectConfirmed_ms": { "typical": "504–529 (18 of 21)", "slow": [3265, 3526, 3628] },
+    "disconnectOrder": "A2DP UNPLUGGED within ~50 ms of the request; HFP ~0.4 s later",
+    "linkLingerAfterDisconnect": "≈3 s ('waited 815 / 1019 / 1221 / 2054 / 2448 ms for the previous link to close', measured from the click)",
+    "batteryAdvertRead": "≈6.5 s after connecting; case level unknown while the buds are out ('case ?')",
+    "clickToKsSend_ms": "6–8"
+  }
+}

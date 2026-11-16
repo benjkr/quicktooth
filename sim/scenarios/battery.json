@@ -1,0 +1,16 @@
+{
+  "name": "battery",
+  "description": "after connecting, the BLE battery reading lands in the tooltip",
+  "options": { "profile": "fast" },
+  "steps": [
+    { "click": "icon" },
+    { "waitFor": "s.app.pending === null", "timeout": 5000 },
+    { "expect": { "app.tooltip": "AirPods Pro — Connected" } },
+    { "waitFor": "s.app.battery !== null", "timeout": 10000 },
+    { "eval": "qt.timeline().find(e => e.type === 'confirmed') && qt.now" },
+    { "expect": { "app.tooltip": "AirPods Pro — Connected · 70%", "log": "battery: buds 70% (L 80, R 70), case ?, rssi -58, ble" } },
+    { "hover": "icon" },
+    { "wait": 700 },
+    { "shot": "battery-tooltip" }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "connect-flaky",
+  "description": "the first request is lost; the resend at 8 s recovers it",
+  "options": { "profile": "flaky" },
+  "steps": [
+    { "click": "icon" },
+    { "wait": 7000 },
+    { "expect": { "app.pending": "Connect", "bt.0.hfp": "UNPLUGGED" } },
+    { "waitFor": "s.app.pending === null", "timeout": 6000 },
+    { "expect": { "app.tooltip": "AirPods Pro — Connected", "log": ["resending once", "Connect confirmed after"] } }
+  ]
+}

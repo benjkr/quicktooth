@@ -1,0 +1,20 @@
+{
+  "name": "demo-slow-connect",
+  "description": "recorded: a slow headset — the tracer runs, the 8 s resend fires, the connection lands ~10.5 s after the click",
+  "options": { "profile": "slow" },
+  "region": "tray",
+  "record": { "fps": 30, "zoom": 2 },
+  "steps": [
+    { "hover": "icon", "ms": 500 },
+    { "wait": 900 },
+    { "click": "icon" },
+    { "move": "1500,820", "ms": 300 },
+    { "wait": 2200 },
+    { "hover": "1710,1073", "ms": 400 },
+    { "wait": 700 },
+    { "expect": { "shell.tooltip.text": "AirPods Pro — Connecting…", "app.anim": "Connecting" } },
+    { "waitFor": "s.app.pending === null", "timeout": 15000, "step": 33.333 },
+    { "expect": { "app.tooltip": "AirPods Pro — Connected", "log": ["Connect not confirmed after", "resending once", "Connect confirmed after"] } },
+    { "wait": 1800 }
+  ]
+}

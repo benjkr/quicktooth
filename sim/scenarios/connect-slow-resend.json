@@ -1,0 +1,14 @@
+{
+  "name": "connect-slow-resend",
+  "description": "a slow page: the 8 s resend fires once, the connection still lands",
+  "options": { "profile": "slow" },
+  "steps": [
+    { "click": "icon" },
+    { "wait": 7900 },
+    { "expect": { "app.pending": "Connect", "logNot": "resending once" } },
+    { "wait": 300 },
+    { "expect": { "log": "Connect not confirmed after", "app.anim": "Connecting" } },
+    { "waitFor": "s.app.pending === null", "timeout": 6000 },
+    { "expect": { "app.tooltip": "AirPods Pro — Connected", "logNot": "timed out" } }
+  ]
+}
