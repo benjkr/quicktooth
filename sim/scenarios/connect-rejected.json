@@ -1,0 +1,10 @@
+{
+  "name": "connect-rejected",
+  "description": "the driver refuses the one-shot: the attempt ends at once",
+  "options": { "profile": "rejected" },
+  "steps": [
+    { "click": "icon" },
+    { "wait": 300 },
+    { "expect": { "app.pending": null, "log": ["hr=0x80070490", "Connect: no control accepted the request"], "app.tooltip": "AirPods Pro — Not connected" } }
+  ]
+}

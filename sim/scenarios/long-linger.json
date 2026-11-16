@@ -1,0 +1,14 @@
+{
+  "name": "long-linger",
+  "description": "the old link outlives the 5 s wait: the reconnect stalls (the case the wait exists for)",
+  "options": { "profile": "long-linger", "connected": true },
+  "steps": [
+    { "click": "icon" },
+    { "waitFor": "s.app.pending === null", "timeout": 3000 },
+    { "click": "icon" },
+    { "wait": 5400 },
+    { "expect": { "app.pending": "Connect", "log": "KsProperty ONESHOT_RECONNECT" } },
+    { "waitFor": "s.app.pending === null", "timeout": 22000 },
+    { "expect": { "app.tooltip": "AirPods Pro — Connected", "log": "Connect confirmed after" } }
+  ]
+}

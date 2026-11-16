@@ -1,0 +1,17 @@
+{
+  "name": "first-run",
+  "description": "first run: AirPods picked automatically; the icon starts in the overflow and is promoted once",
+  "options": { "firstRun": true, "settleMs": 200 },
+  "steps": [
+    { "expect": { "shell.iconInOverflow": true, "log": "default target chosen: AirPods Pro" } },
+    { "click": "chevron" },
+    { "wait": 300 },
+    { "expect": { "shell.flyoutOpen": true } },
+    { "shot": "overflow-flyout" },
+    { "click": "200,200" },
+    { "expect": { "shell.flyoutOpen": false } },
+    { "wait": 3000 },
+    { "expect": { "shell.iconInOverflow": false, "log": ["tray promotion attempt 1: Promoted", "IsPromoted=1"], "app.settings.trayPromotedOnce": true } },
+    { "shot": "promoted" }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "clicks-while-pending",
+  "description": "clicks during a pending connect are ignored (a double-click doesn't toggle twice)",
+  "options": { "profile": "typical" },
+  "steps": [
+    { "doubleClick": "icon" },
+    { "expect": { "app.pending": "Connect", "log": "click: ignored, Connect still pending" } },
+    { "waitFor": "s.app.pending === null", "timeout": 5000 },
+    { "expect": { "app.tooltip": "AirPods Pro — Connected" } }
+  ]
+}

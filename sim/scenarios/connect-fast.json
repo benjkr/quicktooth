@@ -1,0 +1,21 @@
+{
+  "name": "connect-fast",
+  "description": "one click connects in ~1.2 s; landing animation, then the solid icon",
+  "options": { "profile": "fast" },
+  "steps": [
+    { "hover": "icon" },
+    { "wait": 700 },
+    { "expect": { "shell.tooltip.text": "AirPods Pro — Not connected", "app.icon.state": "disconnected" } },
+    { "shot": "hover-tooltip" },
+    { "click": "icon" },
+    { "expect": { "app.pending": "Connect", "app.anim": "Connecting", "app.tooltip": "AirPods Pro — Connecting…", "shell.tooltip": null } },
+    { "wait": 400 },
+    { "shot": "connecting" },
+    { "waitFor": "s.app.pending === null", "timeout": 5000 },
+    { "expect": { "app.anim": "Landing", "app.tooltip": "AirPods Pro — Connected", "log": "Connect confirmed after" } },
+    { "eval": "qt.timeline().find(e => e.type === 'confirmed').ms" },
+    { "waitFor": "s.app.anim === null", "timeout": 2000 },
+    { "expect": { "app.icon.state": "connected", "app.timers.length": 2, "bt.0.a2dp": "ACTIVE", "bt.0.hfp": "ACTIVE" } },
+    { "shot": "connected" }
+  ]
+}

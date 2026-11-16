@@ -1,0 +1,15 @@
+{
+  "name": "theme-scale",
+  "description": "light taskbar, then a 150 % display: icons rebuilt with dark ink, then at 24 px",
+  "options": { "connected": true },
+  "steps": [
+    { "theme": "light" },
+    { "wait": 100 },
+    { "expect": { "log": "taskbar theme -> light", "shell.theme": "light" } },
+    { "shot": "light-100" },
+    { "scale": 1.5 },
+    { "wait": 100 },
+    { "expect": { "app.iconSize": 24, "shell.dpr": 1.5, "shell.scale": 1.5, "log": "icons rebuilt: 24 px, light taskbar" } },
+    { "shot": "light-150" }
+  ]
+}

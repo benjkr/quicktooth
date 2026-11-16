@@ -1,0 +1,24 @@
+{
+  "name": "menu",
+  "description": "right-click menu: items, Device submenu after the 400 ms hover delay, Escape, Start with Windows",
+  "options": { "profile": "fast", "connected": true },
+  "steps": [
+    { "wait": 8000 },
+    { "rightClick": "icon" },
+    { "wait": 200 },
+    { "expect": { "shell.menu.0.items": ["AirPods Pro — Connected · 70% (grayed)", "—", "Disconnect", "Device ▸", "—", "Start with Windows", "Exit"] } },
+    { "shot": "menu" },
+    { "hover": "menu:Device" },
+    { "wait": 350 },
+    { "expect": { "shell.menu.length": 1, "shell.menu.0.hot": "Device" } },
+    { "wait": 100 },
+    { "expect": { "shell.menu.length": 2, "shell.menu.1.items": ["✓ AirPods Pro  (connected)", "Studio Headset"] } },
+    { "shot": "submenu" },
+    { "key": "Escape" },
+    { "key": "Escape" },
+    { "expect": { "shell.menu": null } },
+    { "rightClick": "icon" },
+    { "click": "menu:Start with Windows" },
+    { "expect": { "shell.menu": null, "app.autostart": true, "log": "autostart on:" } }
+  ]
+}
