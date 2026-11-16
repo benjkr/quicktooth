@@ -177,7 +177,7 @@ internal sealed class TrayController
                 _host.KillTimer(TIMER_RESEND);
                 _ = ResendConnect();
                 break;
-            case TIMER_LOWBATTERY: // replay the dot's animation while it's showing and nothing else animates
+            case TIMER_LOWBATTERY: // the next ripple, while the dot shows and nothing else animates
                 if (_anim == null && _pending == null && _lowShown) StartAnimation(AnimPhase.LowBattery);
                 break;
             case TIMER_BATTERY:
@@ -530,9 +530,9 @@ internal sealed class TrayController
             if (low != _lowShown)
             {
                 _lowShown = low;
-                if (low && Tunables.LowBatteryReplayS > 0) _host.SetTimer(TIMER_LOWBATTERY, Tunables.LowBatteryReplayS * 1000);
+                if (low) _host.SetTimer(TIMER_LOWBATTERY, Tunables.LowBatteryReplayMs);
                 else _host.KillTimer(TIMER_LOWBATTERY);
-                if (low && Tunables.LowBatteryAnimStyle != 0 && _iconSize > 0) { StartAnimation(AnimPhase.LowBattery); return; }
+                if (low && _iconSize > 0) { StartAnimation(AnimPhase.LowBattery); return; } // the first ripple
             }
             icon = _target?.Connected != true ? _iconOff : low ? _iconLow : _iconOn;
         }

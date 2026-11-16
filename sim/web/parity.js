@@ -36,7 +36,7 @@ export function staticSheet(R) {
   return new ImageData(px, width, height);
 }
 
-/** anim-frames-1x.png: connecting / landing / disconnecting rows per theme, at AnimFrameMs steps. */
+/** anim-frames-1x.png: connecting / landing / disconnecting / low-battery ripple rows per theme, at AnimFrameMs steps. */
 export function animSheet(R) {
   const P = R.P;
   const fs = 16, fpad = 4, cols = 17;
@@ -46,6 +46,7 @@ export function animSheet(R) {
     rows.push({ th, phase: 'Connecting', frames: cols, offset: 0 });
     rows.push({ th, phase: 'Landing', frames: Math.ceil(P.LandSeconds / ft) + 1, offset: 1.4 });
     rows.push({ th, phase: 'Disconnecting', frames: Math.ceil((P.DisconnectSeconds + 0.4) / ft), offset: 0 });
+    rows.push({ th, phase: 'LowBattery', frames: Math.ceil(P.LowBatteryAnimSeconds / ft) + 1, offset: 0 });
   }
   const fw = cols * (fs + fpad) + fpad, fh = rows.length * (fs + fpad) + fpad;
   const px = new Uint8ClampedArray(fw * fh * 4);
