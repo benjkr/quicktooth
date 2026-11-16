@@ -106,7 +106,7 @@ internal static class NativeIcons
         int cellW = sizes.Sum() + pad * (sizes.Length + 1);
         int rowH = sizes.Max() + pad * 2;
         int width = cellW * themes.Length;
-        int height = rowH * 2;
+        int height = rowH * 3;
         var sheet = new byte[width * height * 4];
 
         for (int t = 0; t < themes.Length; t++)
@@ -118,9 +118,9 @@ internal static class NativeIcons
                 if (x / cellW != t) continue;
                 sheet[i * 4] = bg.B; sheet[i * 4 + 1] = bg.G; sheet[i * 4 + 2] = bg.R; sheet[i * 4 + 3] = 255;
             }
-            for (int s = 0; s < 2; s++)
+            for (int s = 0; s < 3; s++)
             {
-                var state = s == 0 ? IconState.Connected : IconState.Disconnected;
+                var state = (IconState)s; // rows: connected, disconnected, low battery
                 int x0 = t * cellW + pad;
                 foreach (int size in sizes)
                 {
@@ -139,7 +139,7 @@ internal static class NativeIcons
 
         // Each theme/state at the current 16 px as a standalone file.
         foreach (var (name, light, bg) in themes)
-            foreach (var state in new[] { IconState.Connected, IconState.Disconnected })
+            foreach (var state in new[] { IconState.Connected, IconState.Disconnected, IconState.LowBattery })
             {
                 var hIcon = CreateIcon(state, light, 16);
                 var px = DrawIconOnBackground(hIcon, 16, bg);
@@ -148,7 +148,8 @@ internal static class NativeIcons
             }
 
         // Pending animation, frame by frame at 12 fps, on both taskbars, through the HICON path.
-        // Per theme: connecting (1.4 s), landing after 1.4 s of connecting, disconnecting (+0.4 s still pending).
+        // Per theme: connecting (1.4 s), landing after 1.4 s of connecting, disconnecting (+0.4 s still pending),
+        // the low-battery ripple.
         // Cancelling (a failed connect, after 1.4 s of connecting) goes in a sheet of its own.
         {
             double ft = Tunables.AnimFrameMs / 1000.0;
@@ -159,6 +160,7 @@ internal static class NativeIcons
                 rows.Add((light, bg, AnimPhase.Connecting, 17, 0));
                 rows.Add((light, bg, AnimPhase.Landing, (int)Math.Ceiling(Tunables.LandSeconds / ft) + 1, 1.4));
                 rows.Add((light, bg, AnimPhase.Disconnecting, (int)Math.Ceiling((Tunables.DisconnectSeconds + 0.4) / ft), 0));
+                rows.Add((light, bg, AnimPhase.LowBattery, (int)Math.Ceiling(Tunables.LowBatteryAnimSeconds / ft) + 1, 0));
                 cancelRows.Add((light, bg, AnimPhase.Cancelling, (int)Math.Ceiling(Tunables.CancelSeconds / ft) + 1, 1.4));
             }
             WriteAnimSheet(dir, "anim-frames", rows, themes[0].Bg, themes[1].Bg, files);

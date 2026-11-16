@@ -14,9 +14,10 @@ namespace QuickTooth;
 internal sealed class TrayController
 {
     public const int TIMER_ANIM = 1, TIMER_TIMEOUT = 2, TIMER_POLL = 3, TIMER_DEBOUNCE = 4,
-        TIMER_FASTPOLL = 5, TIMER_ADD_RETRY = 6, TIMER_PROMOTE = 7, TIMER_RESEND = 8, TIMER_BATTERY = 9;
+        TIMER_FASTPOLL = 5, TIMER_ADD_RETRY = 6, TIMER_PROMOTE = 7, TIMER_RESEND = 8, TIMER_BATTERY = 9,
+        TIMER_LOWBATTERY = 10;
     public static readonly int[] AllTimers = [TIMER_ANIM, TIMER_TIMEOUT, TIMER_POLL, TIMER_DEBOUNCE,
-        TIMER_FASTPOLL, TIMER_ADD_RETRY, TIMER_PROMOTE, TIMER_RESEND, TIMER_BATTERY];
+        TIMER_FASTPOLL, TIMER_ADD_RETRY, TIMER_PROMOTE, TIMER_RESEND, TIMER_BATTERY, TIMER_LOWBATTERY];
 
     public const int CMD_CONNECT = 1, CMD_DISCONNECT = 2, CMD_AUTOSTART = 3, CMD_EXIT = 4, CMD_STATUS = 9, CMD_DEVICE_BASE = 100;
 
@@ -51,7 +52,8 @@ internal sealed class TrayController
     private int _promoteAttempts;
     private int _iconSize;
     private bool _lightTaskbar;
-    private IconImage? _iconOn, _iconOff, _shownIcon;
+    private IconImage? _iconOn, _iconOff, _iconLow, _shownIcon;
+    private bool _lowShown;                  // the static icon last chosen was the low-battery one
     private string _shownTip = "";
 
     private List<BtDevice> _menuDevices = [];
@@ -174,6 +176,9 @@ internal sealed class TrayController
             case TIMER_RESEND:
                 _host.KillTimer(TIMER_RESEND);
                 _ = ResendConnect();
+                break;
+            case TIMER_LOWBATTERY: // the next ripple, while the dot shows and nothing else animates
+                if (_anim == null && _pending == null && _lowShown) StartAnimation(AnimPhase.LowBattery);
                 break;
             case TIMER_BATTERY:
                 _host.SetTimer(TIMER_BATTERY, Tunables.BatteryCheckMs); // back to the periodic check
@@ -439,6 +444,10 @@ internal sealed class TrayController
         return _battery.Text;
     }
 
+    /// <summary>The tooltip shows a battery reading, the buds are at or below the low mark and not charging.</summary>
+    private bool LowBattery() =>
+        BatteryText() != null && !_battery!.BudsCharging && _battery.Buds is int level && level <= Tunables.LowBatteryPercent;
+
     /// <summary>Tooltip and menu header, e.g. "AirPods Pro — Connected · 30%".</summary>
     public string StatusLine() =>
         BatteryText() is string battery ? $"{DeviceLabel()} — {StatusText()} · {battery}" : $"{DeviceLabel()} — {StatusText()}";
@@ -517,7 +526,15 @@ internal sealed class TrayController
         }
         else
         {
-            icon = _target?.Connected == true ? _iconOn : _iconOff;
+            bool low = _target?.Connected == true && LowBattery();
+            if (low != _lowShown)
+            {
+                _lowShown = low;
+                if (low) _host.SetTimer(TIMER_LOWBATTERY, Tunables.LowBatteryReplayMs);
+                else _host.KillTimer(TIMER_LOWBATTERY);
+                if (low && _iconSize > 0) { StartAnimation(AnimPhase.LowBattery); return; } // the first ripple
+            }
+            icon = _target?.Connected != true ? _iconOff : low ? _iconLow : _iconOn;
         }
         if (icon == null) return;
         string tip = StatusLine();
@@ -572,9 +589,10 @@ internal sealed class TrayController
         int size = _host.IconSize;
         var on = new IconImage(IconRenderer.RenderBgra(IconState.Connected, _lightTaskbar, size), size, "{\"kind\":\"static\",\"state\":\"connected\"}");
         var off = new IconImage(IconRenderer.RenderBgra(IconState.Disconnected, _lightTaskbar, size), size, "{\"kind\":\"static\",\"state\":\"disconnected\"}");
-        var old = new[] { _iconOn, _iconOff };
+        var low = new IconImage(IconRenderer.RenderBgra(IconState.LowBattery, _lightTaskbar, size), size, "{\"kind\":\"static\",\"state\":\"connected\",\"lowBattery\":true}");
+        var old = new[] { _iconOn, _iconOff, _iconLow };
         bool rebuilt = _iconOn != null;
-        (_iconOn, _iconOff, _iconSize) = (on, off, size);
+        (_iconOn, _iconOff, _iconLow, _iconSize) = (on, off, low, size);
         if (rebuilt) Log.Info($"icons rebuilt: {size} px, {(_lightTaskbar ? "light" : "dark")} taskbar");
         UpdateIcon(force: true); // the shell has the new icon before the old one goes
         foreach (var img in old)

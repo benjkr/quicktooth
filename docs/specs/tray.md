@@ -10,7 +10,9 @@ The behaviour is `TrayController` (shared); `TrayApp` is its Windows host.
 
 - Connected: the solid glyph with dimmed ear tips. Not connected, not available or no device: the
   hollow outline with solid ear tips. White on a dark taskbar, `#1A1A1A` on a light one (Windows
-  mode, `SystemUsesLightTheme`). Rebuilt when the theme flips (`WM_SETTINGCHANGE`
+  mode, `SystemUsesLightTheme`). Low battery: the connected glyph with an orange dot in the
+  bottom-right corner while the tooltip shows a reading of 20% or less for the emptier bud, not
+  while charging; it ripples when it appears and every 3 s ([icon](icon-and-animation.md)). Rebuilt when the theme flips (`WM_SETTINGCHANGE`
   "ImmersiveColorSet") and when the small-icon size changes (DPI or display change, checked again
   on every idle poll).
 - Tooltip and menu header: `<device> — <status>`, plus ` · <battery>` while connected and the

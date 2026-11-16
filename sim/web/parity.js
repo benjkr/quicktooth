@@ -20,11 +20,11 @@ export function staticSheet(R) {
   const sizes = [16, 20, 24, 32], pad = 8;
   const cellW = sizes.reduce((a, b) => a + b) + pad * (sizes.length + 1);
   const rowH = Math.max(...sizes) + pad * 2;
-  const width = cellW * THEMES.length, height = rowH * 2;
+  const width = cellW * THEMES.length, height = rowH * 3;
   const px = new Uint8ClampedArray(width * height * 4);
   THEMES.forEach((th, t) => {
     fill(px, width, t * cellW, 0, cellW, height, th.bg);
-    ['connected', 'disconnected'].forEach((state, s) => {
+    ['connected', 'disconnected', 'lowBattery'].forEach((state, s) => {
       let x0 = t * cellW + pad;
       for (const size of sizes) {
         const y0 = s * rowH + pad + Math.floor((Math.max(...sizes) - size) / 2);
@@ -36,7 +36,7 @@ export function staticSheet(R) {
   return new ImageData(px, width, height);
 }
 
-/** anim-frames-1x.png: connecting / landing / disconnecting rows per theme, at AnimFrameMs steps. */
+/** anim-frames-1x.png: connecting / landing / disconnecting / low-battery ripple rows per theme, at AnimFrameMs steps. */
 export function animSheet(R) {
   const P = R.P;
   const fs = 16, fpad = 4, cols = 17;
@@ -46,6 +46,7 @@ export function animSheet(R) {
     rows.push({ th, phase: 'Connecting', frames: cols, offset: 0 });
     rows.push({ th, phase: 'Landing', frames: Math.ceil(P.LandSeconds / ft) + 1, offset: 1.4 });
     rows.push({ th, phase: 'Disconnecting', frames: Math.ceil((P.DisconnectSeconds + 0.4) / ft), offset: 0 });
+    rows.push({ th, phase: 'LowBattery', frames: Math.ceil(P.LowBatteryAnimSeconds / ft) + 1, offset: 0 });
   }
   const fw = cols * (fs + fpad) + fpad, fh = rows.length * (fs + fpad) + fpad;
   const px = new Uint8ClampedArray(fw * fh * 4);

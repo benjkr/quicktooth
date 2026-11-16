@@ -67,8 +67,9 @@ public static partial class Bridge
     [JSExport] internal static void SetGlyphs(string? fillSvg, string? lineSvg) => IconRenderer.SetGlyphs(fillSvg, lineSvg);
 
     // ---- renderer (RGBA, straight alpha, for ImageData)
-    [JSExport] internal static byte[] RenderStatic(bool connected, bool light, int size) =>
-        ToRgba(IconRenderer.RenderBgra(connected ? IconState.Connected : IconState.Disconnected, light, size));
+    /// <param name="state">"connected", "disconnected" or "lowBattery".</param>
+    [JSExport] internal static byte[] RenderStatic(string state, bool light, int size) =>
+        ToRgba(IconRenderer.RenderBgra(Enum.Parse<IconState>(state, ignoreCase: true), light, size));
 
     [JSExport] internal static byte[] RenderAnim(string phase, double t, double tracerT, bool light, int size) =>
         ToRgba(IconRenderer.RenderAnim(Enum.Parse<AnimPhase>(phase), t, tracerT, light, size));

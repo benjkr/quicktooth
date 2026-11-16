@@ -34,6 +34,8 @@ internal static class Tunables
     public static int BatteryMaxAgeMin { get; set; } = 5;
     public static int BatteryShowAgeMin { get; set; } = 15;
     public static int MenuBatteryMaxAgeS { get; set; } = 60;
+    /// <summary>The connected icon gets the orange dot at or below this level (the emptier bud, not while charging).</summary>
+    public static int LowBatteryPercent { get; set; } = 20;
 
     // ---- icon and animation (IconRenderer)
     public static int AnimFrameMs { get; set; } = 83;       // ≈ 12 fps nominal (Win32 timers make it ~10.5)
@@ -55,9 +57,17 @@ internal static class Tunables
     /// lays the artwork out for exactly this zoom at 16 px (stems on whole pixels), so keep the two in step.
     /// </summary>
     public static double Zoom { get; set; } = 1.125;
+    /// <summary>The low-battery dot's radius, and the gap cut around it, in pixels at 16 px (scaled with the icon).</summary>
+    public static double LowBatteryDotRadius { get; set; } = 2.4;
+    public static double LowBatteryDotGap { get; set; } = 0.8;
+    /// <summary>The dot's ripple: how long one lasts, and how often it starts while the dot shows (from the start of the previous one).</summary>
+    public static double LowBatteryAnimSeconds { get; set; } = 0.7;
+    public static int LowBatteryReplayMs { get; set; } = 3000;
 
     public const string OnDarkTaskbar = "#FFFFFF";
     public const string OnLightTaskbar = "#1A1A1A";
+    public const string LowBatteryOnDark = "#FF8C00";
+    public const string LowBatteryOnLight = "#CA5010";
 
     private static readonly (string Name, Func<double> Get, Action<double> Set)[] Table =
     [
@@ -80,6 +90,7 @@ internal static class Tunables
         (nameof(BatteryMaxAgeMin), () => BatteryMaxAgeMin, v => BatteryMaxAgeMin = (int)v),
         (nameof(BatteryShowAgeMin), () => BatteryShowAgeMin, v => BatteryShowAgeMin = (int)v),
         (nameof(MenuBatteryMaxAgeS), () => MenuBatteryMaxAgeS, v => MenuBatteryMaxAgeS = (int)v),
+        (nameof(LowBatteryPercent), () => LowBatteryPercent, v => LowBatteryPercent = (int)v),
         (nameof(AnimFrameMs), () => AnimFrameMs, v => AnimFrameMs = (int)v),
         (nameof(SpringSeconds), () => SpringSeconds, v => SpringSeconds = v),
         (nameof(LandSeconds), () => LandSeconds, v => LandSeconds = v),
@@ -92,6 +103,10 @@ internal static class Tunables
         (nameof(TracerLength), () => TracerLength, v => TracerLength = v),
         (nameof(TracerWidth), () => TracerWidth, v => TracerWidth = v),
         (nameof(Zoom), () => Zoom, v => Zoom = v),
+        (nameof(LowBatteryDotRadius), () => LowBatteryDotRadius, v => LowBatteryDotRadius = v),
+        (nameof(LowBatteryDotGap), () => LowBatteryDotGap, v => LowBatteryDotGap = v),
+        (nameof(LowBatteryAnimSeconds), () => LowBatteryAnimSeconds, v => LowBatteryAnimSeconds = v),
+        (nameof(LowBatteryReplayMs), () => LowBatteryReplayMs, v => LowBatteryReplayMs = (int)v),
     ];
 
     private static readonly Dictionary<string, double> Defaults = Table.ToDictionary(t => t.Name, t => t.Get());

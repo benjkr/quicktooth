@@ -16,6 +16,19 @@ Part of the specs (index in `AGENTS.md`). What the app does now; numbers are in
 - Drawn at `Zoom` 1.125 of the SVG's 24-unit box, so the artwork fills the 16 px width. The
   generator lays the art out for that zoom (stems on whole pixels): change both together.
 
+## Low-battery dot
+
+- The connected glyph plus an orange dot (`#FF8C00` on a dark taskbar, `#CA5010` on a light one)
+  centred at (13.5, 13) of the 16 px grid, radius `LowBatteryDotRadius`, with a ring
+  `LowBatteryDotGap` wide cut out of the artwork around it (it clips the right stem's tip). Scaled
+  with the icon size. It's a third static icon (`IconState.LowBattery`). When it shows:
+  [tray](tray.md).
+- **Ripple** (`AnimPhase.LowBattery`): one thin orange ring spreads from just outside the gap
+  (3 units further out, easing out) and fades, `LowBatteryAnimSeconds` 0.7 s, ending exactly on the
+  static dot. It plays when the dot appears and then every `LowBatteryReplayMs` 3 s while it shows,
+  through the same animation timer; a connect or disconnect animation takes over, and the timer
+  skips a ripple while one is running.
+
 ## Renderer
 
 - `IconRenderer` (shared): a small scanline rasterizer with nonzero fill, 16 sub-scanlines per
@@ -23,7 +36,8 @@ Part of the specs (index in `AGENTS.md`). What the app does now; numbers are in
   with each span geometrically. Output is straight-alpha BGRA.
 - The same code draws in the exe and in the simulator; `qt-sim parity` holds them within 1/255.
 - Windows: `NativeIcons` turns pixels into HICONs. `QuickTooth.exe --render-icons <dir>` writes
-  check sheets through the real HICON + `DrawIconEx` path: 16/20/24/32 px on both taskbars, every
+  check sheets through the real HICON + `DrawIconEx` path: 16/20/24/32 px on both taskbars (connected,
+  not connected, low battery), every
   animation frame and 240 px glyphs.
 
 ## Animation (while an action is pending)
@@ -43,4 +57,6 @@ Part of the specs (index in `AGENTS.md`). What the app does now; numbers are in
   lands.
 - **Cancelling** (a connect that failed or timed out): the earbuds glide back (`CancelSeconds`
   0.3 s) and the glow fades.
-- Every phase ends exactly on the static icon. Nothing pulses ([decisions](../working/decisions.md)).
+- Every phase ends exactly on the static icon. Nothing pulses while connecting or disconnecting
+  ([decisions](../working/decisions.md)); the low-battery ripple repeating every 3 s is the user's
+  choice.

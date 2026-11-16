@@ -11,7 +11,7 @@
 import { stateName } from './bluetooth.js';
 import { setLatestHost } from './core.js';
 
-const TIMER = { ANIM: 1, TIMEOUT: 2, POLL: 3, DEBOUNCE: 4, FASTPOLL: 5, ADD_RETRY: 6, PROMOTE: 7, RESEND: 8, BATTERY: 9 };
+const TIMER = { ANIM: 1, TIMEOUT: 2, POLL: 3, DEBOUNCE: 4, FASTPOLL: 5, ADD_RETRY: 6, PROMOTE: 7, RESEND: 8, BATTERY: 9, LOWBATTERY: 10 };
 const TIMER_NAME = Object.fromEntries(Object.entries(TIMER).map(([k, v]) => [v, `TIMER_${k}`]));
 export const CMD = { CONNECT: 1, DISCONNECT: 2, AUTOSTART: 3, EXIT: 4, DEVICE_BASE: 100 };
 export const IPC = { Toggle: 1, Connect: 2, Disconnect: 3, Exit: 4, ShowMenu: 5, CloseMenu: 6 };
