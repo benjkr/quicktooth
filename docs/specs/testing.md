@@ -4,7 +4,7 @@ Part of the specs (index in `AGENTS.md`). Keep it current in the same change, an
 
 ## Shared code (looks and behaviour)
 
-- `cd sim; node qt-sim.mjs test` (about a minute) runs:
+- `cd sim; bun qt-sim.mjs test` (about a minute) runs:
   - `parity`: the browser build's icons against `QuickTooth.exe --render-icons`, within 1/255.
   - `menu-check`: the menu against real Win32 menu captures.
   - Taskbar geometry against UI Automation measurements.

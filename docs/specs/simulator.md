@@ -37,7 +37,7 @@ Part of the specs (index in `AGENTS.md`). What it does now; the full command ref
   `flaky` (first request lost), `unreachable` (20 s timeout), `rejected`, `long-linger`,
   `hfp-very-slow`.
 
-## Commands (`cd sim; node qt-sim.mjs …`)
+## Commands (`cd sim; bun qt-sim.mjs …`)
 
 - `shot`, `run <scenario>` (scripted flows with assertions and optional MP4/GIF), `frames`
   (an animation contact sheet; `--compare --tune Name=value` sets numbers side by side), `parity`,
