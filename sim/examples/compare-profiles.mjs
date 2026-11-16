@@ -1,8 +1,8 @@
 // The same click on several Bluetooth profiles, recorded frame-accurately and played side by side,
 // so you can see what a slow, flaky or failing connection looks like in the taskbar.
 //
-//   node examples/compare-profiles.mjs                      # fast vs slow, icon region at 6×
-//   node examples/compare-profiles.mjs fast flaky unreachable --region tray --zoom 1
+//   bun examples/compare-profiles.mjs                      # fast vs slow, icon region at 6×
+//   bun examples/compare-profiles.mjs fast flaky unreachable --region tray --zoom 1
 //
 // Writes sim/out/compare-profiles/<a>-vs-<b>….mp4 and .gif.
 import { execFileSync } from 'node:child_process';

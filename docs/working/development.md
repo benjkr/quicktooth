@@ -6,7 +6,7 @@ Read before building, running tools, setting up a machine or delegating.
 
 - .NET 10 SDK; Visual Studio (or its Build Tools) with "Desktop development with C++" for the
   Native AOT linker.
-- `cd sim; npm install` once (Playwright 1.60 with its Chromium). ffmpeg on `PATH` for
+- `cd sim; bun install` once (Bun 1.4.4+; Playwright 1.60 with its Chromium). ffmpeg on `PATH` for
   recordings, GIFs and `--zoom`.
 - Inno Setup 6.7+ for the installer (`winget install JRSoftware.InnoSetup`). Python with `shapely`
   only for regenerating the glyphs.
@@ -16,7 +16,7 @@ Read before building, running tools, setting up a machine or delegating.
 - `dotnet build src/QuickTooth -c Release`: a quick JIT build to run CLI checks; nothing installed.
 - `dotnet publish src/QuickTooth/QuickTooth.csproj -c Release -r win-x64 -o <scratch>`: the native
   exe, about a minute. Must show zero warnings.
-- `cd sim; node qt-sim.mjs test`: about a minute; rebuilds the browser core first if needed
+- `cd sim; bun qt-sim.mjs test`: about a minute; rebuilds the browser core first if needed
   (5–10 s).
 - Real-time recordings (`run` of a recorded scenario, `examples/compare-profiles.mjs`) take as long
   as what they show: run them in the background and wait with `t3_background_wait`.

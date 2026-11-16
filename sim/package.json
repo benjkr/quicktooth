@@ -5,12 +5,12 @@
   "type": "module",
   "bin": { "qt-sim": "./qt-sim.mjs" },
   "scripts": {
-    "parity": "node qt-sim.mjs parity",
-    "test": "node qt-sim.mjs test",
-    "open": "node qt-sim.mjs open"
+    "parity": "bun qt-sim.mjs parity",
+    "test": "bun qt-sim.mjs test",
+    "open": "bun qt-sim.mjs open"
   },
   "devDependencies": {
     "playwright": "1.60.0"
   },
-  "engines": { "node": ">=20" }
+  "engines": { "bun": ">=1.4.4" }
 }

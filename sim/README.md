@@ -13,45 +13,45 @@ while the PC is locked), and to try changes before they reach the real taskbar.
 
 ```powershell
 cd sim
-npm install            # playwright 1.60.0; uses its Chromium (revision 1223) — run `npx playwright install chromium` if it's missing
-node qt-sim.mjs doctor # shows the browser and ffmpeg in use
+bun install            # playwright 1.60.0; uses its Chromium (revision 1223) — run `bunx playwright install chromium` if it's missing
+bun qt-sim.mjs doctor  # shows the browser and ffmpeg in use
 ```
 
-Needs Node 20+, ffmpeg (for video, GIF and `--zoom`) and the .NET 10 SDK: every run first rebuilds the app's C# core for the browser if it changed (into `web/core`, about 5–10 s; prints which build it uses). No .NET workload is needed.
+Needs Bun 1.4.4+ (older Bun hangs launching Chromium on Windows; `bun upgrade`), ffmpeg (for video, GIF and `--zoom`) and the .NET 10 SDK: every run first rebuilds the app's C# core for the browser if it changed (into `web/core`, about 5–10 s; prints which build it uses). No .NET workload is needed.
 
 ## Recipes
 
 ```powershell
 # What does the tray look like right now? (physical pixels; @8x copy for pixel peeping)
-node qt-sim.mjs shot --zoom 8
-node qt-sim.mjs shot --connected --theme light --scale 1.5 --region icon --zoom 8
+bun qt-sim.mjs shot --zoom 8
+bun qt-sim.mjs shot --connected --theme light --scale 1.5 --region icon --zoom 8
 
 # Hover tooltip / right-click menu / submenu
-node qt-sim.mjs shot --hover icon --wait 700
-node qt-sim.mjs shot --rclick icon --wait 200 --hover "menu:Device" --wait 500
+bun qt-sim.mjs shot --hover icon --wait 700
+bun qt-sim.mjs shot --rclick icon --wait 200 --hover "menu:Device" --wait 500
 
 # Mid-animation: 400 ms into a connect on a slow headset
-node qt-sim.mjs shot --profile slow --click icon --wait 400 --region icon --zoom 8
+bun qt-sim.mjs shot --profile slow --click icon --wait 400 --region icon --zoom 8
 
 # A whole flow as video (MP4 + GIF, real-time pace, frame-accurate) — see scenarios/demo-connect.json
-node qt-sim.mjs run demo-connect
+bun qt-sim.mjs run demo-connect
 
 # The same click on several connection profiles, side by side (what slow/flaky/failing looks like)
-node examples/compare-profiles.mjs fast typical slow unreachable
+bun examples/compare-profiles.mjs fast typical slow unreachable
 
 # Every animation phase, one frame per real timer tick, both themes (+ GIFs)
-node qt-sim.mjs frames --zoom 8
+bun qt-sim.mjs frames --zoom 8
 
 # Try different numbers (src/QuickTooth.Core/Tunables.cs) side by side with the current ones
-node qt-sim.mjs frames --compare --tune Travel=2.4,TracerPeriod=0.8
+bun qt-sim.mjs frames --compare --tune Travel=2.4,TracerPeriod=0.8
 # A new look or behaviour: change src/QuickTooth.Core (e.g. IconRenderer.cs); the next run rebuilds it
-node qt-sim.mjs frames --zoom 8
+bun qt-sim.mjs frames --zoom 8
 
 # Does it still behave? (fidelity checks + all scenarios with assertions)
-node qt-sim.mjs test
+bun qt-sim.mjs test
 
 # Click around yourself (window with a control panel: profiles, time controls, tunables, live log)
-node qt-sim.mjs open
+bun qt-sim.mjs open
 ```
 
 Output goes to `sim/out/` (git-ignored). Every `run` writes the screenshots, `quicktooth.log` in the
@@ -168,6 +168,6 @@ Quick Settings and anything else that isn't on QuickTooth's path.
 
 There is nothing to keep in sync: the simulator runs `src/QuickTooth.Core`, the same C# as the exe.
 
-- **Looks, animation, behaviour, menu contents, tooltip text, timings**: change `src/QuickTooth.Core`. The next `qt-sim` run rebuilds the browser build; run `node qt-sim.mjs test`.
+- **Looks, animation, behaviour, menu contents, tooltip text, timings**: change `src/QuickTooth.Core`. The next `qt-sim` run rebuilds the browser build; run `bun qt-sim.mjs test`.
 - **Numbers only**: `--tune` (or `qt.tune({...})`) overrides any `Tunables.cs` value in the page without touching the C#.
 - **The Windows side** (`src/QuickTooth/TrayApp.cs`: window, Shell_NotifyIcon, menus, HICONs; `WindowsDevices.cs`: real Bluetooth) isn't run here. Its page-side counterparts are `web/tray.js` (TrayAppModel's host methods) and `web/bluetooth.js`.

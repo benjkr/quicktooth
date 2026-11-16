@@ -41,6 +41,10 @@ async function serve(route, extraFiles) {
  * @param {Map<string,string>} [o.extraFiles] extra URL path → absolute file (e.g. a variant module outside the repo)
  */
 export async function launch({ headless = true, scale = 1, viewport, extraFiles = new Map(), recordVideo } = {}) {
+  // Bun before 1.4.4 hangs in chromium.launch on Windows (the --remote-debugging-pipe never answers).
+  if (globalThis.Bun && Bun.semver.order(Bun.version, '1.4.4') < 0) {
+    throw new Error(`Bun ${Bun.version} is too old: Playwright's Chromium launch hangs on Windows before Bun 1.4.4. Run \`bun upgrade\`.`);
+  }
   // The page runs the app's C# core: rebuild it first if the C# changed (prints which build is used).
   const { ensureCore } = await import('./core-build.mjs');
   await ensureCore({ log: (line) => console.error(line) });
