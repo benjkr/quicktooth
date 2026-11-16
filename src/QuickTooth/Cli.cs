@@ -46,6 +46,14 @@ internal static class Cli
                 // test hooks: open/close the tray menu without touching the mouse
                 case "--show-menu": return Forward(Ipc.CmdShowMenu);
                 case "--close-menu": return Forward(Ipc.CmdCloseMenu);
+                // test hooks (read-only): settings load/save fidelity, and COM release under load
+                case "--settings-roundtrip": File.WriteAllText(args[2], Settings.Load(args[1]).ToJson()); return 0;
+                case "--stress-enumerate": return StressEnumerate(int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture));
+                case "--watch-endpoints": return WatchEndpoints(int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture));
+                case "--version":
+                    Out.WriteLine($"QuickTooth {typeof(Cli).Assembly.GetName().Version}  ({System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}, " +
+                                  $"{(System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported ? "JIT" : "Native AOT")})");
+                    return 0;
                 case "--help": case "-h": case "/?": return Help(0);
                 default:
                     Out.WriteLine($"Unknown option: {args[0]}");
@@ -82,6 +90,40 @@ internal static class Cli
             behave exactly like clicking the icon.
             """);
         return code;
+    }
+
+    /// <summary>
+    /// Enumerates (activating every Bluetooth KS control) <paramref name="n"/> times and prints the
+    /// process handle count, which must stay flat if COM objects are released deterministically.
+    /// </summary>
+    private static int StressEnumerate(int n)
+    {
+        using var worker = new DeviceWorker();
+        var audio = new BluetoothAudio();
+        int Handles() { using var p = System.Diagnostics.Process.GetCurrentProcess(); return p.HandleCount; }
+        for (int i = 0; i <= n; i++)
+        {
+            if (i % 50 == 0) Out.WriteLine($"after {i,4} enumerations: {Handles()} handles");
+            if (i < n) worker.Run(() => audio.Enumerate(probeKsControl: true)).GetAwaiter().GetResult();
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// Read-only: checks the endpoint-notification callback object through its native vtable, then
+    /// registers it with the audio service and counts the callbacks that arrive in <paramref name="seconds"/>.
+    /// </summary>
+    private static int WatchEndpoints(int seconds)
+    {
+        using var worker = new DeviceWorker();
+        var audio = new BluetoothAudio();
+        Out.WriteLine($"callback self-test through the COM vtable: {(worker.Run(audio.SelfTestCallback).GetAwaiter().GetResult() ? "OK" : "FAILED")}");
+        worker.Run(audio.RegisterNotifications).GetAwaiter().GetResult();
+        Out.WriteLine($"registered; listening {seconds} s…");
+        Out.Flush();
+        Thread.Sleep(TimeSpan.FromSeconds(seconds));
+        Out.WriteLine($"callbacks received from the audio service: {audio.NotificationCount}");
+        return 0;
     }
 
     // ------------------------------------------------------------------ --list
@@ -270,6 +312,8 @@ internal static class Cli
         Out.WriteLine($"Listening for Apple status adverts (model 0x{model:X4}) for up to 12 s…");
         var reading = BleBatteryScanner.ScanAsync(model, TimeSpan.FromSeconds(12)).GetAwaiter().GetResult();
         Out.WriteLine(reading == null ? "No status advert heard (the AirPods only broadcast it while out of the case)." : $"Battery: {reading.Text}   [{reading.Describe()}]");
+        var (adverts, apple, errors) = BleBatteryScanner.LastScan;
+        Out.WriteLine($"Scan: {adverts} Bluetooth LE adverts heard, {apple} from Apple devices, {errors} handler errors.");
         return 0;
     }
 

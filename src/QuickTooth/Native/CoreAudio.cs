@@ -1,13 +1,17 @@
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace QuickTooth.Native;
 
-// Core Audio / DeviceTopology / KS COM interop.
+// Core Audio / DeviceTopology / KS COM interop, through source-generated COM wrappers (Native AOT).
 // Vtable order MUST match the Windows SDK headers (mmdeviceapi.h, devicetopology.h,
 // ks.h). A wrong order silently calls the wrong method. Every method is PreserveSig
 // so failures come back as HRESULTs instead of exceptions.
+//
+// Interfaces returned to us are wrapped as unique instances (UniqueComInterfaceMarshaller), so
+// ComObject.FinalRelease() really releases them: KS filter handles must not wait for a GC.
 
-internal static class CoreAudio
+internal static unsafe partial class CoreAudio
 {
     public const uint DEVICE_STATE_ACTIVE = 0x1;
     public const uint DEVICE_STATE_DISABLED = 0x2;
@@ -44,14 +48,33 @@ internal static class CoreAudio
         _ => $"0x{state:X}",
     };
 
+    private static readonly Guid IID_IMMDeviceEnumerator = new("A95664D2-9614-4F35-A746-DE8DB63617E6");
+
     public static IMMDeviceEnumerator CreateEnumerator()
     {
-        var type = Type.GetTypeFromCLSID(CLSID_MMDeviceEnumerator, throwOnError: true)!;
-        return (IMMDeviceEnumerator)Activator.CreateInstance(type)!;
+        var clsid = CLSID_MMDeviceEnumerator;
+        var iid = IID_IMMDeviceEnumerator;
+        int hr = CoCreateInstance(in clsid, IntPtr.Zero, CLSCTX_ALL, in iid, out var p);
+        if (hr != S_OK) Marshal.ThrowExceptionForHR(hr);
+        return Wrap<IMMDeviceEnumerator>(p)!;
     }
 
-    [DllImport("ole32.dll")]
-    public static extern int PropVariantClear(ref PROPVARIANT pvar);
+    /// <summary>
+    /// Wraps an interface pointer we own (e.g. from Activate) as a unique managed instance and
+    /// drops our raw reference; the wrapper holds its own until FinalRelease or finalization.
+    /// </summary>
+    public static T? Wrap<T>(IntPtr p) where T : class
+    {
+        if (p == IntPtr.Zero) return null;
+        try { return UniqueComInterfaceMarshaller<T>.ConvertToManaged((void*)p); }
+        finally { Marshal.Release(p); }
+    }
+
+    [LibraryImport("ole32.dll")]
+    private static partial int CoCreateInstance(in Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, in Guid riid, out IntPtr ppv);
+
+    [LibraryImport("ole32.dll")]
+    public static partial int PropVariantClear(ref PROPVARIANT pvar);
 }
 
 internal enum EDataFlow { eRender = 0, eCapture = 1, eAll = 2 }
@@ -80,34 +103,35 @@ internal struct PROPVARIANT
     public readonly Guid? AsGuid() => vt == VT_CLSID && ptr != IntPtr.Zero ? Marshal.PtrToStructure<Guid>(ptr) : null;
 }
 
-[ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMMDeviceEnumerator
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16), Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
+internal partial interface IMMDeviceEnumerator
 {
-    [PreserveSig] int EnumAudioEndpoints(EDataFlow dataFlow, uint dwStateMask, out IMMDeviceCollection ppDevices);
-    [PreserveSig] int GetDefaultAudioEndpoint(EDataFlow dataFlow, ERole role, out IMMDevice ppEndpoint);
-    [PreserveSig] int GetDevice([MarshalAs(UnmanagedType.LPWStr)] string pwstrId, out IMMDevice ppDevice);
+    [PreserveSig] int EnumAudioEndpoints(EDataFlow dataFlow, uint dwStateMask, [MarshalUsing(typeof(UniqueComInterfaceMarshaller<IMMDeviceCollection>))] out IMMDeviceCollection? ppDevices);
+    [PreserveSig] int GetDefaultAudioEndpoint(EDataFlow dataFlow, ERole role, [MarshalUsing(typeof(UniqueComInterfaceMarshaller<IMMDevice>))] out IMMDevice? ppEndpoint);
+    [PreserveSig] int GetDevice(string pwstrId, [MarshalUsing(typeof(UniqueComInterfaceMarshaller<IMMDevice>))] out IMMDevice? ppDevice);
     [PreserveSig] int RegisterEndpointNotificationCallback(IMMNotificationClient pClient);
     [PreserveSig] int UnregisterEndpointNotificationCallback(IMMNotificationClient pClient);
 }
 
-[ComImport, Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMMDeviceCollection
+[GeneratedComInterface, Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E")]
+internal partial interface IMMDeviceCollection
 {
     [PreserveSig] int GetCount(out uint pcDevices);
-    [PreserveSig] int Item(uint nDevice, out IMMDevice ppDevice);
+    [PreserveSig] int Item(uint nDevice, [MarshalUsing(typeof(UniqueComInterfaceMarshaller<IMMDevice>))] out IMMDevice? ppDevice);
 }
 
-[ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMMDevice
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16), Guid("D666063F-1587-4E43-81F1-B948E807363F")]
+internal partial interface IMMDevice
 {
-    [PreserveSig] int Activate(ref Guid iid, uint dwClsCtx, IntPtr pActivationParams, [MarshalAs(UnmanagedType.IUnknown)] out object? ppInterface);
-    [PreserveSig] int OpenPropertyStore(uint stgmAccess, out IPropertyStore ppProperties);
-    [PreserveSig] int GetId([MarshalAs(UnmanagedType.LPWStr)] out string ppstrId);
+    /// <summary>ppInterface is an owned raw pointer: wrap it with <see cref="CoreAudio.Wrap{T}"/>.</summary>
+    [PreserveSig] int Activate(ref Guid iid, uint dwClsCtx, IntPtr pActivationParams, out IntPtr ppInterface);
+    [PreserveSig] int OpenPropertyStore(uint stgmAccess, [MarshalUsing(typeof(UniqueComInterfaceMarshaller<IPropertyStore>))] out IPropertyStore? ppProperties);
+    [PreserveSig] int GetId(out string? ppstrId);
     [PreserveSig] int GetState(out uint pdwState);
 }
 
-[ComImport, Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IPropertyStore
+[GeneratedComInterface, Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99")]
+internal partial interface IPropertyStore
 {
     [PreserveSig] int GetCount(out uint cProps);
     [PreserveSig] int GetAt(uint iProp, out PROPERTYKEY pkey);
@@ -116,61 +140,62 @@ internal interface IPropertyStore
     [PreserveSig] int Commit();
 }
 
-[ComImport, Guid("7991EEC9-7E89-4D85-8390-6C703CEC60C0"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMMNotificationClient
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16), Guid("7991EEC9-7E89-4D85-8390-6C703CEC60C0")]
+internal partial interface IMMNotificationClient
 {
-    [PreserveSig] int OnDeviceStateChanged([MarshalAs(UnmanagedType.LPWStr)] string pwstrDeviceId, uint dwNewState);
-    [PreserveSig] int OnDeviceAdded([MarshalAs(UnmanagedType.LPWStr)] string pwstrDeviceId);
-    [PreserveSig] int OnDeviceRemoved([MarshalAs(UnmanagedType.LPWStr)] string pwstrDeviceId);
-    [PreserveSig] int OnDefaultDeviceChanged(EDataFlow flow, ERole role, [MarshalAs(UnmanagedType.LPWStr)] string? pwstrDefaultDeviceId);
-    [PreserveSig] int OnPropertyValueChanged([MarshalAs(UnmanagedType.LPWStr)] string pwstrDeviceId, PROPERTYKEY key);
+    [PreserveSig] int OnDeviceStateChanged(string pwstrDeviceId, uint dwNewState);
+    [PreserveSig] int OnDeviceAdded(string pwstrDeviceId);
+    [PreserveSig] int OnDeviceRemoved(string pwstrDeviceId);
+    [PreserveSig] int OnDefaultDeviceChanged(EDataFlow flow, ERole role, string? pwstrDefaultDeviceId);
+    [PreserveSig] int OnPropertyValueChanged(string pwstrDeviceId, PROPERTYKEY key);
 }
 
-[ComImport, Guid("2A07407E-6497-4A18-9787-32F79BD0D98F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IDeviceTopology
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16), Guid("2A07407E-6497-4A18-9787-32F79BD0D98F")]
+internal partial interface IDeviceTopology
 {
     [PreserveSig] int GetConnectorCount(out uint pCount);
-    [PreserveSig] int GetConnector(uint nIndex, out IConnector ppConnector);
+    [PreserveSig] int GetConnector(uint nIndex, [MarshalUsing(typeof(UniqueComInterfaceMarshaller<IConnector>))] out IConnector? ppConnector);
     [PreserveSig] int GetSubunitCount(out uint pCount);
     [PreserveSig] int GetSubunit(uint nIndex, out IntPtr ppSubunit);
-    [PreserveSig] int GetPartById(uint nId, out IPart ppPart);
-    [PreserveSig] int GetDeviceId([MarshalAs(UnmanagedType.LPWStr)] out string ppwstrDeviceId);
-    [PreserveSig] int GetSignalPath(IPart pIPartFrom, IPart pIPartTo, [MarshalAs(UnmanagedType.Bool)] bool bRejectMixedPaths, out IntPtr ppParts);
+    [PreserveSig] int GetPartById(uint nId, [MarshalUsing(typeof(UniqueComInterfaceMarshaller<IPart>))] out IPart? ppPart);
+    [PreserveSig] int GetDeviceId(out string? ppwstrDeviceId);
+    [PreserveSig] int GetSignalPath(IntPtr pIPartFrom, IntPtr pIPartTo, [MarshalAs(UnmanagedType.Bool)] bool bRejectMixedPaths, out IntPtr ppParts);
 }
 
-[ComImport, Guid("9c2c4058-23f5-41de-877a-df3af236a09e"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IConnector
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16), Guid("9c2c4058-23f5-41de-877a-df3af236a09e")]
+internal partial interface IConnector
 {
     [PreserveSig] int GetType(out int pType);
     [PreserveSig] int GetDataFlow(out int pFlow);
-    [PreserveSig] int ConnectTo(IConnector pConnectTo);
+    [PreserveSig] int ConnectTo(IntPtr pConnectTo);
     [PreserveSig] int Disconnect();
     [PreserveSig] int IsConnected([MarshalAs(UnmanagedType.Bool)] out bool pbConnected);
-    [PreserveSig] int GetConnectedTo(out IConnector ppConTo);
-    [PreserveSig] int GetConnectorIdConnectedTo([MarshalAs(UnmanagedType.LPWStr)] out string ppwstrConnectorId);
-    [PreserveSig] int GetDeviceIdConnectedTo([MarshalAs(UnmanagedType.LPWStr)] out string ppwstrDeviceId);
+    [PreserveSig] int GetConnectedTo([MarshalUsing(typeof(UniqueComInterfaceMarshaller<IConnector>))] out IConnector? ppConTo);
+    [PreserveSig] int GetConnectorIdConnectedTo(out string? ppwstrConnectorId);
+    [PreserveSig] int GetDeviceIdConnectedTo(out string? ppwstrDeviceId);
 }
 
-[ComImport, Guid("AE2DE0E4-5BCA-4F2D-AA46-5D13F8FDB3A9"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IPart
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16), Guid("AE2DE0E4-5BCA-4F2D-AA46-5D13F8FDB3A9")]
+internal partial interface IPart
 {
-    [PreserveSig] int GetName([MarshalAs(UnmanagedType.LPWStr)] out string ppwstrName);
+    [PreserveSig] int GetName(out string? ppwstrName);
     [PreserveSig] int GetLocalId(out uint pnId);
-    [PreserveSig] int GetGlobalId([MarshalAs(UnmanagedType.LPWStr)] out string ppwstrGlobalId);
+    [PreserveSig] int GetGlobalId(out string? ppwstrGlobalId);
     [PreserveSig] int GetPartType(out int pPartType);
     [PreserveSig] int GetSubType(out Guid pSubType);
     [PreserveSig] int GetControlInterfaceCount(out uint pCount);
     [PreserveSig] int GetControlInterface(uint nIndex, out IntPtr ppInterfaceDesc);
     [PreserveSig] int EnumPartsIncoming(out IntPtr ppParts);
     [PreserveSig] int EnumPartsOutgoing(out IntPtr ppParts);
-    [PreserveSig] int GetTopologyObject(out IDeviceTopology ppTopology);
-    [PreserveSig] int Activate(uint dwClsContext, ref Guid refiid, [MarshalAs(UnmanagedType.IUnknown)] out object? ppvObject);
+    [PreserveSig] int GetTopologyObject([MarshalUsing(typeof(UniqueComInterfaceMarshaller<IDeviceTopology>))] out IDeviceTopology? ppTopology);
+    /// <summary>ppvObject is an owned raw pointer: wrap it with <see cref="CoreAudio.Wrap{T}"/>.</summary>
+    [PreserveSig] int Activate(uint dwClsContext, ref Guid refiid, out IntPtr ppvObject);
     [PreserveSig] int RegisterControlChangeCallback(ref Guid riid, IntPtr pNotify);
     [PreserveSig] int UnregisterControlChangeCallback(IntPtr pNotify);
 }
 
-[ComImport, Guid("28F54685-06FD-11D2-B27A-00A0C9223196"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IKsControl
+[GeneratedComInterface, Guid("28F54685-06FD-11D2-B27A-00A0C9223196")]
+internal partial interface IKsControl
 {
     [PreserveSig] int KsProperty(IntPtr Property, uint PropertyLength, IntPtr PropertyData, uint DataLength, out uint BytesReturned);
     [PreserveSig] int KsMethod(IntPtr Method, uint MethodLength, IntPtr MethodData, uint DataLength, out uint BytesReturned);
