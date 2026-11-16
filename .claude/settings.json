@@ -1,0 +1,6 @@
+{
+  "autoMemoryEnabled": false,
+  "env": {
+    "PYTHONUTF8": "1"
+  }
+}

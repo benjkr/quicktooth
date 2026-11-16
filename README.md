@@ -108,6 +108,8 @@ The source is in `src/`:
 
 `sim/` is a browser simulator of the Windows 11 taskbar that runs QuickTooth's own code (`src/QuickTooth.Core`) against a mocked Bluetooth stack with tunable delays. It's for previewing and testing changes without a real taskbar. See [`sim/README.md`](sim/README.md).
 
+Working on QuickTooth (people and coding agents alike): start with [`AGENTS.md`](AGENTS.md). It has the rules every change follows and points to a spec for each area in `docs/specs/`.
+
 ## Credits
 
 - **AirPods Pro icons:** built from the shapes of one earbud in the "AirPods Pro" line drawing on [SVG Repo](https://www.svgrepo.com/svg/324521/airpods-pro) (#324521), traced into `tools/airpods_pro_shapes.json` and laid out for the 16 px tray icon by `tools/airpods_glyph.py`.
