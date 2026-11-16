@@ -2,9 +2,9 @@
 
 A browser copy of the Windows 11 taskbar with QuickTooth's tray icon in it. Use it to see and test
 icon, animation, tooltip, menu and connect/disconnect behaviour without a real taskbar (for example
-while the PC is locked), and to try changes before porting them to the C#.
+while the PC is locked), and to try changes before they reach the real taskbar.
 
-- **The app logic is the real logic.** `web/tray.js` is a line-by-line port of `TrayApp.cs`, with the same timers, state machine and log lines. `web/icon.js` ports `IconRenderer.cs`. The constants (timeouts, animation durations, Travel, Zoom…) are **read from the C# source at load time**, so they can't drift.
+- **The app code is the real code.** The icon renderer, the tray state machine (timers, link-teardown wait, resend, timeout, tooltip, menu contents, battery) and every tunable are the app's own C# from `src/QuickTooth.Core`, compiled to WebAssembly (`src/QuickTooth.Web`) and run in the page. The exe runs the same code on Windows. `web/tray.js` and `web/icon.js` are only the page-side host: Win32 timers on the virtual clock, the device worker, the mock shell and Bluetooth.
 - **Bluetooth is mocked at the app's own seam**: `Enumerate`, `SendOneShot`, `BluetoothConnected`, endpoint notifications, the BLE battery scan. A2DP and HFP are separate, and the profiles are calibrated on the real `quicktooth.log` (fast / typical / real-world mix / slow / flaky / unreachable / …).
 - **One virtual clock drives everything**, including fades and delays, so a screenshot at t = 1.234 s is exactly what the screen shows then, and recordings are frame-accurate.
 - **Runs only in Playwright's bundled Chromium**, never Chrome or Edge. Pixels come out at the physical resolution for 100–200 % scaling.
@@ -17,7 +17,7 @@ npm install            # playwright 1.60.0; uses its Chromium (revision 1223) �
 node qt-sim.mjs doctor # shows the browser and ffmpeg in use
 ```
 
-Needs Node 20+ and ffmpeg (for video, GIF and `--zoom`). `parity` also needs the .NET SDK, to build the app.
+Needs Node 20+, ffmpeg (for video, GIF and `--zoom`) and the .NET 10 SDK: every run first rebuilds the app's C# core for the browser if it changed (into `web/core`, about 5–10 s; prints which build it uses). No .NET workload is needed.
 
 ## Recipes
 
@@ -42,10 +42,10 @@ node examples/compare-profiles.mjs fast typical slow unreachable
 # Every animation phase, one frame per real timer tick, both themes (+ GIFs)
 node qt-sim.mjs frames --zoom 8
 
-# Try a new animation before touching C#: tweak constants, or write a variant (web/variants/example-breathe.js)
+# Try different numbers (src/QuickTooth.Core/Tunables.cs) side by side with the current ones
 node qt-sim.mjs frames --compare --tune Travel=2.4,TracerPeriod=0.8
-node qt-sim.mjs frames --compare --variant web/variants/example-breathe.js
-node qt-sim.mjs run connect-fast --variant web/variants/example-breathe.js
+# A new look or behaviour: change src/QuickTooth.Core (e.g. IconRenderer.cs); the next run rebuilds it
+node qt-sim.mjs frames --zoom 8
 
 # Does it still behave? (fidelity checks + all scenarios with assertions)
 node qt-sim.mjs test
@@ -63,8 +63,8 @@ real app's format, `timeline.json` (app, shell and Bluetooth events merged) and 
 | --- | --- |
 | `shot [steps…]` | Opens the simulator, runs the steps in order, takes one screenshot. `--region tray\|screen\|taskbar\|icon\|x,y,w,h`, `--zoom N`, `--out file.png`, `--json` (prints the full state). |
 | `run <scenario>` | Runs a scenario file (or a built-in name from `scenarios/`). Exit code 1 if an `expect` or `waitFor` fails. `--headed` to watch. |
-| `frames` | Animation contact sheet + GIF per phase at the real timer cadence. `--phase`, `--size`, `--zoom`, `--compare` (C# baseline vs your `--tune`/`--variant`). |
-| `parity` | Builds the app, runs `QuickTooth.exe --render-icons`, diffs every icon and animation frame against the JS renderer. Fails on drift. `--no-build` uses the last build. |
+| `frames` | Animation contact sheet + GIF per phase at the real timer cadence. `--phase`, `--size`, `--zoom`, `--compare` (current numbers vs your `--tune`). |
+| `parity` | Builds the app, runs `QuickTooth.exe --render-icons`, diffs every icon and animation frame against the browser build of the same renderer. Must match within 1 level (maths-library rounding). `--no-build` uses the last build. |
 | `menu-check` | Renders the menu and diffs it against real Win32 captures (`reference/menu`): sizes, item rects, placement, colours. |
 | `test` | `parity` + `menu-check` + taskbar geometry vs UI Automation + pixel integrity at 100–200 % + every scenario that asserts something. |
 | `open` | Headed window with a control panel (realtime clock). Default screen 1280×720. |
@@ -76,7 +76,7 @@ Step flags for `shot` (applied in the order given): `--hover T`, `--move T`, `--
 Simulator options (any command that opens it): `--scale 1|1.25|1.5|1.75|2`, `--screen 1920x1080`,
 `--theme dark|light`, `--style solid|acrylic`, `--profile <name>`, `--seed N`, `--connected`,
 `--first-run` (empty settings, icon starts in the overflow), `--overflow`, `--no-cursor`, `--no-dwm`,
-`--timer-quantum 15.625` (0 = exact timers), `--tune Name=value,…` (or JSON), `--variant file.js`, `--settle ms`.
+`--timer-quantum 15.625` (0 = exact timers), `--tune Name=value,…` (or JSON; names from `src/QuickTooth.Core/Tunables.cs`), `--settle ms`.
 
 ## Scenarios
 
@@ -148,7 +148,8 @@ Every knob can be set alone: `hfpMs`, `hfpTailChance`/`hfpTailMs`, `a2dpAfterHfp
 | Area | Status | Checked by |
 | --- | --- | --- |
 | Taskbar/tray geometry at 100 % | measured with UI Automation; all 12 elements match exactly | `test` (geometry) |
-| Icon pixels (static + every animation frame) | matches `QuickTooth.exe --render-icons`; only anti-aliasing noise differs (mean 0.8–1.5/255) | `parity` |
+| Icon pixels (static + every animation frame) | the app's own renderer; matches `QuickTooth.exe --render-icons` within 1/255 (mean 0.03–0.05) | `parity` |
+| Tray behaviour (state machine, timers, log lines, tooltip, menu contents) | the app's own `TrayController`; only Win32 and Bluetooth are simulated | `test` (scenarios) |
 | Icon reaching the screen unresampled at 100–200 %, and after a runtime DPI change | exact, max Δ 0 | `test` (pixels) |
 | Popup menu: size, items, placement, submenu, colours | measured from real menus; exact geometry | `menu-check` |
 | Animation cadence | measured: `SetTimer(83)` ticks every ~94.8 ms (~10.5 fps) | `reference/probe/timerprobe.cs` |
@@ -163,9 +164,10 @@ throwaway menu or timer of their own and never touch a running QuickTooth.
 Not simulated: keyboard focus in the tray (Win+B, arrows), notification balloons, multiple monitors,
 Quick Settings and anything else that isn't on QuickTooth's path.
 
-## Keeping it in sync with the C#
+## Changing the app
 
-- **Constants**: read from `TrayApp.cs` / `IconRenderer.cs` on every load. A renamed constant shows a warning banner and falls back to the old value. Update `EXPECTED` in `web/constants.js`.
-- **Icon drawing / animation logic**: change `web/icon.js` alongside `IconRenderer.cs`. `node qt-sim.mjs parity` must pass.
-- **Tray logic** (`TrayApp.cs`): mirror the change in `web/tray.js` (same method names), then `node qt-sim.mjs test`.
-- **Menu items**: built in `TrayAppModel.showMenu`, the same code path as `TrayApp.ShowMenu`.
+There is nothing to keep in sync: the simulator runs `src/QuickTooth.Core`, the same C# as the exe.
+
+- **Looks, animation, behaviour, menu contents, tooltip text, timings**: change `src/QuickTooth.Core`. The next `qt-sim` run rebuilds the browser build; run `node qt-sim.mjs test`.
+- **Numbers only**: `--tune` (or `qt.tune({...})`) overrides any `Tunables.cs` value in the page without touching the C#.
+- **The Windows side** (`src/QuickTooth/TrayApp.cs`: window, Shell_NotifyIcon, menus, HICONs; `WindowsDevices.cs`: real Bluetooth) isn't run here. Its page-side counterparts are `web/tray.js` (TrayAppModel's host methods) and `web/bluetooth.js`.

@@ -1,0 +1,12 @@
+<Project>
+  <!-- Shared by QuickTooth (native exe), QuickTooth.Core (shared logic) and QuickTooth.Web (browser build). -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- The runtime is compiled into the native exe and shipped in the browser build, so never build
+         with an older patch than this one (10.0.14+ fixes CVE-2026-111497). A newer SDK's own,
+         newer patch is left alone. See Directory.Build.targets. -->
+    <QtRuntimePatch>10.0.15</QtRuntimePatch>
+  </PropertyGroup>
+</Project>

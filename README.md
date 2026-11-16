@@ -42,7 +42,7 @@ Two smaller things help as well:
 ## What you get
 
 - **An AirPods Pro icon in the taskbar.** Solid with dimmed ear tips when connected; the reverse when not (hollow, dimmed pods with solid ear tips). **Click** it to connect or disconnect.
-- **A short animation while it works.** A light circles each earbud; when connected, the earbuds snap together and fill in.
+- **A short animation while it works.** A short glow runs around the outline of each earbud; when connected, the earbuds snap together and fill in.
 - **Battery level** in the tooltip, e.g. "AirPods Pro — Connected · 80%", read from the AirPods' own Bluetooth broadcast.
 - **A right-click menu.** Connect/Disconnect, pick which Bluetooth headset the icon controls, and Start with Windows.
 - **It matches your taskbar.** White on a dark taskbar, dark on a light one, sharp at any display scaling.
@@ -90,19 +90,23 @@ Settings live in `%APPDATA%\QuickTooth\settings.json`. Every connect and disconn
 - **Battery.** Windows doesn't expose battery for AirPods. AirPods broadcast their own status over Bluetooth Low Energy while out of the case, and QuickTooth listens briefly and passively, without connecting, and reads the level from that. Other headsets show the battery level Windows reports, if any.
 - **Live status.** It comes from Windows' audio notifications, checked every 0.5 s while connecting and every 20 s otherwise.
 
-The source is in `src/QuickTooth/`:
+The source is in `src/`:
 
 | File | What it does |
 | --- | --- |
-| `BluetoothAudio.cs` | finding the headset and sending connect/disconnect |
-| `TrayApp.cs` | the taskbar icon, menu and animation |
-| `Battery.cs` | reading the battery broadcast |
-| `IconRenderer.cs` | drawing the icons |
-| `Native/` | Windows interop |
+| `QuickTooth.Core/TrayController.cs` | the tray behaviour: connect/disconnect, timeouts, tooltip, menu |
+| `QuickTooth.Core/IconRenderer.cs` | drawing the icons and their animation |
+| `QuickTooth.Core/Tunables.cs` | every timing and animation number |
+| `QuickTooth/TrayApp.cs` | the Windows side of the tray icon (window, notification icon, menu) |
+| `QuickTooth/BluetoothAudio.cs` | finding the headset and sending connect/disconnect |
+| `QuickTooth/Battery.cs` | reading the battery broadcast |
+| `QuickTooth/Native/` | Windows interop |
+
+`QuickTooth.Core` has no Windows code: the same C# runs in the app and, compiled to WebAssembly (`QuickTooth.Web`), in the simulator below.
 
 `tools/airpods_glyph.py` regenerates the tray icons (`assets/airpods-pro-*.svg`); it needs `pip install shapely`.
 
-`sim/` is a browser simulator of the Windows 11 taskbar with QuickTooth's icon, menu and connect logic, plus a mocked Bluetooth stack with tunable delays. It's for previewing and testing changes without a real taskbar. See [`sim/README.md`](sim/README.md).
+`sim/` is a browser simulator of the Windows 11 taskbar that runs QuickTooth's own code (`src/QuickTooth.Core`) against a mocked Bluetooth stack with tunable delays. It's for previewing and testing changes without a real taskbar. See [`sim/README.md`](sim/README.md).
 
 ## Credits
 

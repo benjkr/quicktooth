@@ -4,8 +4,6 @@
     <OutputType>WinExe</OutputType>
     <!-- 10.0.19041 for the WinRT Bluetooth LE advertisement API (AirPods battery). -->
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PlatformTarget>x64</PlatformTarget>
@@ -19,33 +17,17 @@
 
     <!-- Published as one native exe (Native AOT): no .NET runtime to install or bundle. COM goes
          through source-generated wrappers and JSON through a source-generated context, so the
-         AOT/trim analyzers must stay at zero warnings. -->
+         AOT/trim analyzers must stay at zero warnings. Shared settings (nullable, runtime patch
+         pin) are in ../Directory.Build.props and .targets. -->
     <PublishAot>true</PublishAot>
     <IsAotCompatible>true</IsAotCompatible>
     <OptimizationPreference>Size</OptimizationPreference>
-    <InvariantGlobalization>true</InvariantGlobalization>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <!-- The runtime is compiled into the exe, so never build with an older patch than this one
-         (10.0.14+ fixes CVE-2026-111497). A newer SDK's own, newer patch is left alone. -->
-    <QtRuntimePatch>10.0.15</QtRuntimePatch>
   </PropertyGroup>
 
-  <Target Name="QtPinRuntimePatch" BeforeTargets="ProcessFrameworkReferences">
-    <ItemGroup>
-      <KnownFrameworkReference Condition="'%(Identity)' == 'Microsoft.NETCore.App' and '%(TargetFramework)' == 'net10.0' and
-                                          $([MSBuild]::VersionLessThan('%(KnownFrameworkReference.LatestRuntimeFrameworkVersion)', '$(QtRuntimePatch)'))">
-        <LatestRuntimeFrameworkVersion>$(QtRuntimePatch)</LatestRuntimeFrameworkVersion>
-      </KnownFrameworkReference>
-      <KnownILCompilerPack Condition="'%(Identity)' == 'Microsoft.DotNet.ILCompiler' and '%(TargetFramework)' == 'net10.0' and
-                                      $([MSBuild]::VersionLessThan('%(KnownILCompilerPack.ILCompilerPackVersion)', '$(QtRuntimePatch)'))">
-        <ILCompilerPackVersion>$(QtRuntimePatch)</ILCompilerPackVersion>
-      </KnownILCompilerPack>
-    </ItemGroup>
-  </Target>
-
   <ItemGroup>
-    <EmbeddedResource Include="..\..\assets\airpods-pro-fill.svg" LogicalName="airpods-pro-fill.svg" />
-    <EmbeddedResource Include="..\..\assets\airpods-pro-line.svg" LogicalName="airpods-pro-line.svg" />
+    <!-- Icon drawing, tray behaviour, settings: shared with the browser simulator (QuickTooth.Web). -->
+    <ProjectReference Include="..\QuickTooth.Core\QuickTooth.Core.csproj" />
   </ItemGroup>
 
 </Project>

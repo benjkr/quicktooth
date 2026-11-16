@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+  <!-- QuickTooth.Core compiled to WebAssembly for the browser simulator (sim/). The simulator's
+       JavaScript supplies the host (virtual clock, mock taskbar, mock Bluetooth) through the
+       imports in Bridge.cs; nothing in here talks to real hardware. Built by sim/lib/core-build.mjs. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>QuickTooth.Web</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Served straight from disk by the simulator; no precompressed copies needed. -->
+    <CompressionEnabled>false</CompressionEnabled>
+    <!-- JSImport/JSExport only exist in the browser. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\QuickTooth.Core\QuickTooth.Core.csproj" />
+  </ItemGroup>
+
+</Project>

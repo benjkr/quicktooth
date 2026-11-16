@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- QuickTooth's platform-neutral code: icon drawing and animation, the tray state machine
+       (connect/disconnect, timeouts, resend, tooltip text, menu contents), settings and the device
+       model. The native Windows app (QuickTooth) and the browser simulator build (QuickTooth.Web)
+       both run this same code; everything platform-specific comes in through ITrayHost and
+       IDeviceBackend. No Windows APIs here. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>QuickTooth</RootNamespace>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="QuickTooth" />
+    <InternalsVisibleTo Include="QuickTooth.Web" />
+    <EmbeddedResource Include="..\..\assets\airpods-pro-fill.svg" LogicalName="airpods-pro-fill.svg" />
+    <EmbeddedResource Include="..\..\assets\airpods-pro-line.svg" LogicalName="airpods-pro-line.svg" />
+  </ItemGroup>
+
+</Project>

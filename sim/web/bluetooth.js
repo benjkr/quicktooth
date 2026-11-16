@@ -107,8 +107,9 @@ export function makeDevice({ name, mac, appleModel = null, connected = false, wi
     name: kind === 'A2DP' ? `Headphones (${name})` : `Headset (${name} Hands-Free)`,
     interfaceName: kind === 'A2DP' ? name : `${name} Hands-Free`,
     bthDeviceId: kind === 'A2DP'
-      ? `{2}.\\?\bthenum#{0000110b-0000-1000-8000-00805f9b34fb}${vid}#7&2b3e0c1&0&${macLower}_c00000000#{6994ad04-93ef-11d0-a3cc-00a0c9223196}\src`
-      : `{2}.\\?\bthhfenum#bthhfpaudio#8&3a4f1d2&0&${(nextId * 7) % 100}#{6994ad04-93ef-11d0-a3cc-00a0c9223196}\wave`,
+      // String.raw: real device IDs read "{2}.\\?\bthenum#…\src" (a plain template would turn \b into a backspace).
+      ? String.raw`{2}.\\?\bthenum#{0000110b-0000-1000-8000-00805f9b34fb}${vid}#7&2b3e0c1&0&${macLower}_c00000000#{6994ad04-93ef-11d0-a3cc-00a0c9223196}\src`
+      : String.raw`{2}.\\?\bthhfenum#bthhfpaudio#8&3a4f1d2&0&${(nextId * 7) % 100}#{6994ad04-93ef-11d0-a3cc-00a0c9223196}\wave`,
     state: connected ? STATE.ACTIVE : STATE.UNPLUGGED,
   });
   return {

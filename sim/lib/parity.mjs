@@ -9,14 +9,13 @@ import { launch, ORIGIN, REPO_ROOT } from './browser.mjs';
 
 const run = promisify(execFile);
 
-// WPF and Chromium anti-alias edges slightly differently, so pixels never match exactly. Measured
-// noise floor (Chromium 148 vs WPF, Nov 2026): static mean |Δ| 0.80 / p99 16; animation mean 1.47,
-// worst frame mean 4.0, worst earbud centroid shift 0.17 px, worst earbud ink-mass difference 4.4 %.
-// Deliberate bugs seen to fail these gates: Land/Disconnect timing −10 %, tracer direction reversed,
-// Zoom −2 %, Travel +20 %. Sub-pixel tweaks (Travel ±10 %, SpotRadius −0.5) are below the noise.
+// The simulator draws with the app's own C# renderer (src/QuickTooth.Core, compiled to WebAssembly),
+// so the sheets should match QuickTooth.exe's to within 1 level: the only differences come from
+// the browser's and Windows' maths libraries (sin/cos/pow) rounding a few edge pixels the other way.
+// Measured (Nov 2026): static mean |Δ| 0.03, anim 0.05, max 1 in both.
 export const THRESHOLDS = {
-  static: { meanAbs: 1.5, p99: 30 },
-  anim: { meanAbs: 2.0, p99: 30, worstFrameMeanAbs: 5.0, worstCentroidShiftPx: 0.25, worstMassDiff: 0.06 },
+  static: { meanAbs: 0.15, p99: 1, max: 1 },
+  anim: { meanAbs: 0.15, p99: 1, max: 1, worstFrameMeanAbs: 0.6, worstCentroidShiftPx: 0.03, worstMassDiff: 0.015 },
 };
 
 function check(name, r) {
@@ -28,7 +27,11 @@ function check(name, r) {
   return failures;
 }
 
-async function findExe() {
+// What `dotnet build -c Release` produces (publish.ps1 stages a native build under bin\publish).
+const BUILT_EXE = path.join(REPO_ROOT, 'src', 'QuickTooth', 'bin', 'Release', 'net10.0-windows10.0.19041.0', 'win-x64', 'QuickTooth.exe');
+
+async function findExe(justBuilt) {
+  if (justBuilt && await stat(BUILT_EXE).catch(() => null)) return BUILT_EXE;
   const base = path.join(REPO_ROOT, 'src', 'QuickTooth', 'bin');
   const hits = [];
   async function walk(dir) {
@@ -51,7 +54,7 @@ export async function parity({ outDir, build = true, exe, log = console.log }) {
       // Build only: publish.ps1 would install and start the tray app.
       await run('dotnet', ['build', path.join(REPO_ROOT, 'src/QuickTooth/QuickTooth.csproj'), '-c', 'Release', '-nologo', '-v', 'q'], { cwd: REPO_ROOT, windowsHide: true, maxBuffer: 1 << 24 });
     }
-    exe = await findExe();
+    exe = await findExe(build);
     if (!exe) throw new Error('QuickTooth.exe not found under src/QuickTooth/bin; build it first (dotnet build src/QuickTooth -c Release)');
   }
   const refDir = path.join(os.tmpdir(), `qt-sim-parity-${process.pid}`);
