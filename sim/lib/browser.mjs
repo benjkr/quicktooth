@@ -12,7 +12,7 @@ export const REPO_ROOT = path.resolve(SIM_DIR, '..');
 
 // Only these repo paths are served to the page.
 const ALLOW = [/^sim\/web\//, /^sim\/reference\//, /^assets\//, /^src\/QuickTooth\/.+\.cs$/];
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.cs': 'text/plain', '.txt': 'text/plain' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.cs': 'text/plain', '.txt': 'text/plain', '.wasm': 'application/wasm', '.dat': 'application/octet-stream' };
 
 async function serve(route, extraFiles) {
   const url = new URL(route.request().url());
@@ -41,6 +41,9 @@ async function serve(route, extraFiles) {
  * @param {Map<string,string>} [o.extraFiles] extra URL path → absolute file (e.g. a variant module outside the repo)
  */
 export async function launch({ headless = true, scale = 1, viewport, extraFiles = new Map(), recordVideo } = {}) {
+  // The page runs the app's C# core: rebuild it first if the C# changed (prints which build is used).
+  const { ensureCore } = await import('./core-build.mjs');
+  await ensureCore({ log: (line) => console.error(line) });
   const browser = await chromium.launch({ channel: 'chromium', headless, args: ['--force-color-profile=srgb', '--font-render-hinting=none'] });
   const context = await browser.newContext({ viewport, deviceScaleFactor: scale, recordVideo, colorScheme: 'dark' });
   await context.route(`${ORIGIN}/**`, (route) => serve(route, extraFiles));

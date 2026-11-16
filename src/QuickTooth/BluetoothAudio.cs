@@ -7,46 +7,6 @@ using QuickTooth.Native;
 
 namespace QuickTooth;
 
-internal enum OneShot { Connect, Disconnect }
-
-/// <summary>One render endpoint whose topology leads to a Bluetooth KS filter.</summary>
-internal sealed record BtEndpoint(
-    string EndpointId,
-    string Name,
-    string? InterfaceName,
-    uint State,
-    string BthDeviceId,
-    Guid ContainerId,
-    string? Mac,
-    bool HiddenFromEnumeration, // found only via PnP (Core Audio's EnumAudioEndpoints omits it)
-    int KsActivateHr)           // int.MinValue = not attempted
-{
-    public bool Active => State == CoreAudio.DEVICE_STATE_ACTIVE;
-    public bool IsA2dp => BthDeviceId.Contains(@"\bthenum#", StringComparison.OrdinalIgnoreCase);
-}
-
-/// <summary>A Bluetooth audio device: all its render endpoints, grouped by container ID.</summary>
-internal sealed record BtDevice(Guid ContainerId, string Name, string? Mac, IReadOnlyList<BtEndpoint> Endpoints)
-{
-    /// <summary>Connected if any of its endpoints (A2DP or HFP) is ACTIVE.</summary>
-    public bool Connected => Endpoints.Any(e => e.Active);
-
-    /// <summary>Compact state signature, used to log transitions.</summary>
-    public string StateSignature => string.Join(", ", Endpoints.Select(e => $"{(e.IsA2dp ? "A2DP" : "HFP")}={CoreAudio.StateName(e.State)}"));
-}
-
-/// <summary>A render endpoint that is not Bluetooth (kept only for --list --all diagnostics).</summary>
-internal sealed record OtherEndpoint(string EndpointId, string Name, uint State, string? TopologyIds);
-
-internal sealed record SendResult(string EndpointName, string BthDeviceId, int Hr, uint BytesReturned);
-
-internal sealed class Snapshot
-{
-    public required IReadOnlyList<BtDevice> Devices { get; init; }
-    public IReadOnlyList<OtherEndpoint> Others { get; init; } = [];
-    public string? Error { get; init; }
-}
-
 /// <summary>
 /// Bluetooth audio connect/disconnect through the Bluetooth audio driver's one-shot KS properties
 /// (the approach used by ToothTray). Every method must run on the same MTA thread
@@ -160,11 +120,7 @@ internal sealed partial class BluetoothAudio
             com.ReleaseAll();
         }
 
-        string prop = op == OneShot.Connect ? "ONESHOT_RECONNECT" : "ONESHOT_DISCONNECT";
-        foreach (var r in results)
-            Log.Info($"KsProperty {prop} -> hr=0x{r.Hr:X8} bytes={r.BytesReturned}  [{r.EndpointName}]  {r.BthDeviceId}");
-        if (results.Count == 0)
-            Log.Info($"KsProperty {prop}: no Bluetooth KS controls found for container {containerId:B}");
+        SendLog.Write(containerId, op, results);
         return results;
     }
 
@@ -181,7 +137,7 @@ internal sealed partial class BluetoothAudio
             var ids = BluetoothTopologyIds(device, com, out var all);
             var sb = new StringBuilder();
             sb.AppendLine($"name       {ReadString(device, com, CoreAudio.PKEY_Device_FriendlyName) ?? "?"}");
-            sb.AppendLine($"state      {CoreAudio.StateName(state)} ({state})");
+            sb.AppendLine($"state      {DeviceState.Name(state)} ({state})");
             sb.AppendLine($"container  {ReadContainerId(device, com):B}");
             sb.AppendLine($"topology   {(all.Count == 0 ? "-" : string.Join(" | ", all))}");
             foreach (var id in ids)

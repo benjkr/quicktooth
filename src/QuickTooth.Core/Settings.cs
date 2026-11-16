@@ -9,7 +9,7 @@ namespace QuickTooth;
 [JsonSerializable(typeof(Settings))]
 internal sealed partial class SettingsJsonContext : JsonSerializerContext;
 
-/// <summary>Persisted in %APPDATA%\QuickTooth\settings.json.</summary>
+/// <summary>Persisted in %APPDATA%\QuickTooth\settings.json (or wherever <see cref="SaveHandler"/> says).</summary>
 internal sealed class Settings
 {
     public static string Directory { get; } =
@@ -61,8 +61,16 @@ internal sealed class Settings
 
     public string ToJson() => JsonSerializer.Serialize(this, Json);
 
+    public static Settings FromJson(string json) => JsonSerializer.Deserialize(json, Json) ?? new Settings();
+
+    /// <summary>
+    /// Where Save() goes instead of the file, when set. The simulator keeps its settings in the page.
+    /// </summary>
+    public static Action<Settings>? SaveHandler { get; set; }
+
     public void Save()
     {
+        if (SaveHandler is { } handler) { handler(this); return; }
         try
         {
             System.IO.Directory.CreateDirectory(Directory);

@@ -29,7 +29,7 @@ Options (all commands that open the simulator):
   --scale 1|1.25|1.5|1.75|2   --screen 1920x1080   --theme dark|light   --style solid|acrylic
   --profile fast|typical|slow|flaky|unreachable|rejected|long-linger|windows-a2dp-first   --seed N
   --connected   --first-run   --overflow   --no-cursor   --no-dwm   --timer-quantum 15.625 (0 = exact timers)
-  --tune Name=value,Name=value (or JSON)   --variant path/to/variant.js   --settle ms (default 1500)
+  --tune Name=value,Name=value (or JSON; src/QuickTooth.Core/Tunables.cs names)   --settle ms (default 1500)
 `;
 
 /** --tune takes JSON or, shell-quoting-free, Name=value,Name=value. */

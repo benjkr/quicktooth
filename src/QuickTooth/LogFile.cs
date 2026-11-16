@@ -1,7 +1,10 @@
 namespace QuickTooth;
 
-/// <summary>Tiny append-only log in %APPDATA%\QuickTooth\quicktooth.log (rolled at 512 KB).</summary>
-internal static class Log
+/// <summary>
+/// Where the native app's <see cref="Log"/> lines go: a tiny append-only file in
+/// %APPDATA%\QuickTooth\quicktooth.log (rolled at 512 KB). Program installs it as Log.Sink.
+/// </summary>
+internal static class LogFile
 {
     private static readonly object Gate = new();
     public static string FilePath { get; } = Path.Combine(Settings.Directory, "quicktooth.log");
@@ -9,11 +12,7 @@ internal static class Log
     /// <summary>Also echo log lines to the console (CLI mode).</summary>
     public static TextWriter? Echo { get; set; }
 
-    public static void Info(string message) => Write(message);
-
-    public static void Error(string context, Exception ex) => Write($"ERROR {context}: {ex}");
-
-    private static void Write(string message)
+    public static void Write(string message)
     {
         string line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{Environment.ProcessId}] {message}";
         lock (Gate)

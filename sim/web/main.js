@@ -3,7 +3,7 @@
 //   scale=1|1.25|1.5|1.75|2   screen=1920x1080   theme=dark|light   style=solid|acrylic
 //   profile=fast|typical|slow|flaky|unreachable|rejected|long-linger|windows-a2dp-first
 //   seed=1   mode=realtime|manual   speed=1   connected=0|1   firstRun=0|1   overflow=0|1
-//   panel=1|0   cursor=1|0   dwm=1|0   timerQuantum=15.625   tune={"Travel":2.2}   variant=/sim/web/variants/x.js
+//   panel=1|0   cursor=1|0   dwm=1|0   timerQuantum=15.625   tune={"Travel":2.2}
 import { SimClock, seededRandom } from './clock.js';
 import { loadKit } from './kit.js';
 import { MockBluetooth, PROFILES } from './bluetooth.js';
@@ -153,8 +153,8 @@ async function boot() {
     },
     exitApp() { app.exit(); },
 
-    /** Change constants/tunables live (renderer and app share the same object). */
-    tune(overrides) { Object.assign(kit.P, overrides); app.rebuildIcons(); return { ...kit.P }; },
+    /** Change tunables live in the C# core (src/QuickTooth.Core/Tunables.cs); the app redraws its icons. */
+    tune(overrides) { kit.tune(overrides); app.rebuildIcons(); return { ...kit.P }; },
 
     /**
      * Renders the pending animation as frames without the taskbar, at the real timer cadence by

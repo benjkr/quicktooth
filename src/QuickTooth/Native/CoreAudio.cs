@@ -39,14 +39,7 @@ internal static unsafe partial class CoreAudio
     public static readonly PROPERTYKEY PKEY_Device_ContainerId = new(new Guid("8c7ed206-3f8a-4827-b3ab-ae9e1faefc6c"), 2);
     public static readonly PROPERTYKEY PKEY_DeviceInterface_FriendlyName = new(new Guid("026e516e-b814-414b-83cd-856d6fef4822"), 2);
 
-    public static string StateName(uint state) => state switch
-    {
-        DEVICE_STATE_ACTIVE => "ACTIVE",
-        DEVICE_STATE_DISABLED => "DISABLED",
-        DEVICE_STATE_NOTPRESENT => "NOTPRESENT",
-        DEVICE_STATE_UNPLUGGED => "UNPLUGGED",
-        _ => $"0x{state:X}",
-    };
+    public static string StateName(uint state) => DeviceState.Name(state);
 
     private static readonly Guid IID_IMMDeviceEnumerator = new("A95664D2-9614-4F35-A746-DE8DB63617E6");
 

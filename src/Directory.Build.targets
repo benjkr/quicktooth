@@ -1,0 +1,20 @@
+<Project>
+  <!-- Raises the .NET runtime (and Native AOT compiler) patch to at least $(QtRuntimePatch). -->
+  <Target Name="QtPinRuntimePatch" BeforeTargets="ProcessFrameworkReferences">
+    <ItemGroup>
+      <KnownFrameworkReference Condition="'%(Identity)' == 'Microsoft.NETCore.App' and '%(TargetFramework)' == 'net10.0' and
+                                          $([MSBuild]::VersionLessThan('%(KnownFrameworkReference.LatestRuntimeFrameworkVersion)', '$(QtRuntimePatch)'))">
+        <LatestRuntimeFrameworkVersion>$(QtRuntimePatch)</LatestRuntimeFrameworkVersion>
+      </KnownFrameworkReference>
+      <!-- Mono runtime packs (the browser build) are listed separately. -->
+      <KnownRuntimePack Condition="'%(Identity)' == 'Microsoft.NETCore.App' and '%(TargetFramework)' == 'net10.0' and
+                                   $([MSBuild]::VersionLessThan('%(KnownRuntimePack.LatestRuntimeFrameworkVersion)', '$(QtRuntimePatch)'))">
+        <LatestRuntimeFrameworkVersion>$(QtRuntimePatch)</LatestRuntimeFrameworkVersion>
+      </KnownRuntimePack>
+      <KnownILCompilerPack Condition="'%(Identity)' == 'Microsoft.DotNet.ILCompiler' and '%(TargetFramework)' == 'net10.0' and
+                                      $([MSBuild]::VersionLessThan('%(KnownILCompilerPack.ILCompilerPackVersion)', '$(QtRuntimePatch)'))">
+        <ILCompilerPackVersion>$(QtRuntimePatch)</ILCompilerPackVersion>
+      </KnownILCompilerPack>
+    </ItemGroup>
+  </Target>
+</Project>

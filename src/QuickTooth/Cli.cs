@@ -11,7 +11,6 @@ internal static class Ipc
 {
     public const string WindowClass = "QuickTooth.TrayWindow";
     public const string CommandMessageName = "QuickTooth.Command.v1";
-    public const int CmdToggle = 1, CmdConnect = 2, CmdDisconnect = 3, CmdExit = 4, CmdShowMenu = 5, CmdCloseMenu = 6;
     public const int IconId = 1;
 
     public static IntPtr FindTrayWindow() => Win32.FindWindow(WindowClass, null);
@@ -44,12 +43,13 @@ internal static class Cli
                 case "--icon-rect": return IconRect();
                 case "--probe": return Probe(args[1]);
                 // test hooks: open/close the tray menu without touching the mouse
-                case "--show-menu": return Forward(Ipc.CmdShowMenu);
-                case "--close-menu": return Forward(Ipc.CmdCloseMenu);
+                case "--show-menu": return Forward(TrayCommands.ShowMenu);
+                case "--close-menu": return Forward(TrayCommands.CloseMenu);
                 // test hooks (read-only): settings load/save fidelity, and COM release under load
                 case "--settings-roundtrip": File.WriteAllText(args[2], Settings.Load(args[1]).ToJson()); return 0;
                 case "--stress-enumerate": return StressEnumerate(int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture));
                 case "--watch-endpoints": return WatchEndpoints(int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture));
+                case "--selftest-icons": return SelfTest.Icons(Out, args.Length > 1 ? int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture) : 200);
                 case "--version":
                     Out.WriteLine($"QuickTooth {typeof(Cli).Assembly.GetName().Version}  ({System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}, " +
                                   $"{(System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported ? "JIT" : "Native AOT")})");
@@ -155,7 +155,7 @@ internal static class Cli
             foreach (var e in d.Endpoints)
             {
                 Out.WriteLine($"    - {e.Name}");
-                Out.WriteLine($"        state       {CoreAudio.StateName(e.State)} ({e.State})");
+                Out.WriteLine($"        state       {DeviceState.Name(e.State)} ({e.State})");
                 Out.WriteLine($"        endpoint    {e.EndpointId}{(e.HiddenFromEnumeration ? "   (not returned by EnumAudioEndpoints; found via PnP)" : "")}");
                 Out.WriteLine($"        interface   {e.InterfaceName ?? "-"}");
                 Out.WriteLine($"        bth device  {e.BthDeviceId}");
@@ -168,7 +168,7 @@ internal static class Cli
         {
             Out.WriteLine($"Other render endpoints ({snap.Others.Count}):");
             foreach (var o in snap.Others)
-                Out.WriteLine($"  {CoreAudio.StateName(o.State),-10} {o.Name}\n             {o.EndpointId}\n             topology: {o.TopologyIds ?? "-"}");
+                Out.WriteLine($"  {DeviceState.Name(o.State),-10} {o.Name}\n             {o.EndpointId}\n             topology: {o.TopologyIds ?? "-"}");
         }
         else
         {
@@ -210,7 +210,7 @@ internal static class Cli
         if (hwnd != IntPtr.Zero)
         {
             int msg = Win32.RegisterWindowMessage(Ipc.CommandMessageName);
-            int code = requested switch { null => Ipc.CmdToggle, OneShot.Connect => Ipc.CmdConnect, _ => Ipc.CmdDisconnect };
+            int code = requested switch { null => TrayCommands.Toggle, OneShot.Connect => TrayCommands.Connect, _ => TrayCommands.Disconnect };
             bool ok = Win32.PostMessage(hwnd, msg, code, IntPtr.Zero);
             Out.WriteLine(ok
                 ? $"Handed '{(requested?.ToString() ?? "toggle")}' to the running tray instance (same path as a click)."
@@ -267,7 +267,7 @@ internal static class Cli
                 {
                     if (!last.TryGetValue(e.EndpointId, out var prev) || prev != e.State)
                     {
-                        Out.WriteLine($"  +{sw.ElapsedMilliseconds,6} ms  {CoreAudio.StateName(e.State),-10} {e.Name}");
+                        Out.WriteLine($"  +{sw.ElapsedMilliseconds,6} ms  {DeviceState.Name(e.State),-10} {e.Name}");
                         last[e.EndpointId] = e.State;
                     }
                 }
@@ -329,7 +329,7 @@ internal static class Cli
     {
         var hwnd = Ipc.FindTrayWindow();
         if (hwnd == IntPtr.Zero) { Out.WriteLine("Tray instance is not running."); return 0; }
-        Win32.PostMessage(hwnd, Win32.RegisterWindowMessage(Ipc.CommandMessageName), Ipc.CmdExit, IntPtr.Zero);
+        Win32.PostMessage(hwnd, Win32.RegisterWindowMessage(Ipc.CommandMessageName), TrayCommands.Exit, IntPtr.Zero);
         Out.WriteLine("Asked the tray instance to exit.");
         return 0;
     }
@@ -358,7 +358,7 @@ internal static class Cli
     private static int RenderIcons(string dir)
     {
         Directory.CreateDirectory(dir);
-        foreach (var f in IconRenderer.WriteCheckImages(dir)) Out.WriteLine(f);
+        foreach (var f in NativeIcons.WriteCheckImages(dir)) Out.WriteLine(f);
         return 0;
     }
 
