@@ -7,7 +7,8 @@ namespace QuickTooth;
 /// <summary>LowBattery: connected, with the low-battery dot.</summary>
 internal enum IconState { Connected, Disconnected, LowBattery }
 
-internal enum AnimPhase { Connecting, Landing, Disconnecting, Cancelling }
+/// <summary>LowBattery: the low-battery dot's own short animation (not a pending action).</summary>
+internal enum AnimPhase { Connecting, Landing, Disconnecting, Cancelling, LowBattery }
 
 internal readonly record struct Rgb(byte R, byte G, byte B);
 
@@ -205,6 +206,7 @@ internal static partial class IconRenderer
 
         /// <summary>Fills closed polygons (nonzero) at <paramref name="opacity"/>.</summary>
         public void Fill(Pt[][] contours, double opacity, Xf xf) => FillPolygons(contours, Quantize(opacity), xf, Clip.None);
+        public void Fill(Pt[][] contours, double opacity, Xf xf, Clip clip) => FillPolygons(contours, Quantize(opacity), xf, clip);
 
         /// <summary>Clears this canvas inside a polygon (a knock-out), anti-aliased at its edge.</summary>
         public void Erase(Pt[] contour, Xf xf)
@@ -366,6 +368,94 @@ internal static partial class IconRenderer
 
     private static Pt[] Disc(double cx, double cy, double r, int n = 48) =>
         Enumerable.Range(0, n).Select(k => new Pt(cx + r * Math.Cos(2 * Math.PI * k / n), cy + r * Math.Sin(2 * Math.PI * k / n))).ToArray();
+
+    // ------------------------------------------------------------------ low-battery dot animation (design candidates)
+    //
+    // Plays when the dot first appears and again every LowBatteryReplayS; LowBatteryAnimSeconds long,
+    // ending exactly on the static low-battery icon. Never repeats within one play (nothing pulses).
+    //   1  pop:      the dot grows in with a slight overshoot and settles
+    //   2  fill:     an orange ring appears and fills from the bottom, like the buds when they land
+    //   3  glint:    a soft white highlight sweeps once across the dot
+    //   4  ripple:   one thin ring spreads out from the dot and fades
+    //   5  drip:     an orange drop runs down the right stem and becomes the dot
+
+    private static readonly Rgb Glint = new(0xFF, 0xFF, 0xFF);
+
+    private static byte[] RenderLowBatteryAnim(double u, bool lightTaskbar, int size)
+    {
+        if (u >= 1 || Tunables.LowBatteryAnimStyle == 0) return RenderBgra(IconState.LowBattery, lightTaskbar, size);
+        var fg = lightTaskbar ? OnLightTaskbar : OnDarkTaskbar;
+        var orange = lightTaskbar ? LowOnLightTaskbar : LowOnDarkTaskbar;
+        var xf = GlyphTransform(size, Zoom);
+        var grid = new Xf(size / 16.0, 0, 0);
+        double r = Tunables.LowBatteryDotRadius, gap = Tunables.LowBatteryDotGap;
+        var art = new Canvas(size);
+        var dot = new Canvas(size);
+        var top = new Canvas(size);      // drawn over the dot (the glint)
+        var topColor = Glint;
+        art.Draw(Fill, 1, xf, Clip.None);
+
+        void Dot(double scale)
+        {
+            if (scale <= 0.001) return;
+            art.Erase(Disc(LowDotX, LowDotY, (r + gap) * scale), grid);
+            dot.Fill([Disc(LowDotX, LowDotY, r * scale)], 1, grid);
+        }
+
+        switch (Tunables.LowBatteryAnimStyle)
+        {
+            case 1: // pop
+            {
+                const double c1 = 1.3, c3 = c1 + 1;
+                double v = u - 1;
+                Dot(Math.Max(0, 1 + c3 * v * v * v + c1 * v * v));
+                break;
+            }
+            case 2: // fill
+            {
+                double a = Clamp01(u / 0.25), f = EaseInOut(Clamp01((u - 0.2) / 0.8));
+                art.Erase(Disc(LowDotX, LowDotY, r + gap), grid);
+                dot.Fill([Disc(LowDotX, LowDotY, r), Disc(LowDotX, LowDotY, r - 0.75).Reverse().ToArray()], a, grid);
+                double yLevel = LowDotY + r - 2 * r * f;
+                if (f > 0.001) dot.Fill([Disc(LowDotX, LowDotY, r)], 1, grid, Clip.None.Intersect(-100, yLevel, 100, 100));
+                break;
+            }
+            case 3: // glint
+            {
+                Dot(1);
+                double cx = LowDotX - r - 1.5 + (2 * r + 3) * EaseInOut(u), w = 0.9, k = 1.2; // band leaning right
+                top.Fill([[new Pt(cx - w - k, LowDotY - r), new Pt(cx + w - k, LowDotY - r), new Pt(cx + w + k, LowDotY + r), new Pt(cx - w + k, LowDotY + r)]],
+                    0.8 * Math.Sin(Math.PI * u), grid, Clip.None.WithCircle(LowDotX, LowDotY, r));
+                break;
+            }
+            case 4: // ripple
+            {
+                Dot(1);
+                // Starts just outside the cut gap, so it never merges with the dot.
+                double e = EaseOut(u), rr = r + gap + 0.4 + 3 * e, wdt = 0.8 - 0.3 * e;
+                top.Fill([Disc(LowDotX, LowDotY, rr + wdt / 2), Disc(LowDotX, LowDotY, rr - wdt / 2).Reverse().ToArray()], 0.85 * (1 - u), grid);
+                topColor = orange;
+                break;
+            }
+            case 5: // drip
+            {
+                // 0–0.6: a drop 2.5 units long runs down the right stem (glyph x 14–18, from y 13.3 to past its tip).
+                // 0.55–1: the dot grows out of the stem's tip (x 11 on the 16 grid) and rolls into the corner.
+                double ud = Clamp01(u / 0.6), yEnd = 13.3 + (ArtBounds.Bottom + 2.5 - 13.3) * ud * ud;
+                if (ud < 1)
+                    dot.Draw(Fill, 1, xf, Clip.None.Intersect(14, Math.Max(13.3, yEnd - 2.5), 18, yEnd));
+                double g = EaseOut(Clamp01((u - 0.55) / 0.45)), cx = 11 + (LowDotX - 11) * g;
+                if (g > 0.001)
+                {
+                    art.Erase(Disc(cx, LowDotY, (r + gap) * g), grid);
+                    dot.Fill([Disc(cx, LowDotY, r * g)], 1, grid);
+                }
+                break;
+            }
+        }
+        var bgra = Over(art.ToBgra(fg), dot.ToBgra(orange));
+        return Over(bgra, top.ToBgra(topColor));
+    }
 
     /// <summary>Straight-alpha "source over" of <paramref name="top"/> onto <paramref name="bottom"/> (in place).</summary>
     private static byte[] Over(byte[] bottom, byte[] top)
@@ -530,6 +620,7 @@ internal static partial class IconRenderer
         // Plays to its end pose; if still pending after that, the tracer runs until it lands.
         AnimPhase.Disconnecting => t >= DisconnectSeconds && !stillPendingDisconnect,
         AnimPhase.Connecting => false,
+        AnimPhase.LowBattery => t >= Tunables.LowBatteryAnimSeconds,
         _ => true,
     };
 
@@ -542,6 +633,7 @@ internal static partial class IconRenderer
     /// <param name="tracerT">Seconds the tracer has been running (continuous across phases).</param>
     public static byte[] RenderAnim(AnimPhase phase, double t, double tracerT, bool lightTaskbar, int size)
     {
+        if (phase == AnimPhase.LowBattery) return RenderLowBatteryAnim(Clamp01(t / Tunables.LowBatteryAnimSeconds), lightTaskbar, size);
         var color = lightTaskbar ? OnLightTaskbar : OnDarkTaskbar;
         double dx, level, tracer; // bud offset, solid level (0 = none, 1 = full), tracer opacity
         switch (phase)

@@ -14,7 +14,7 @@ const HELP = `qt-sim — Windows 11 taskbar + QuickTooth tray simulator (Playwri
 
   bun qt-sim.mjs shot      [steps…] [--region tray|screen|taskbar|icon|x,y,w,h] [--zoom N] [--out file.png]
   bun qt-sim.mjs run       <scenario.json|name> [--out dir] [--headed]
-  bun qt-sim.mjs frames    [--phase all|Connecting|Landing|Disconnecting|Cancelling] [--size 16] [--zoom 8] [--compare] [--out dir]
+  bun qt-sim.mjs frames    [--phase all|Connecting|Landing|Disconnecting|Cancelling|LowBattery] [--size 16] [--zoom 8] [--compare] [--out dir]
   bun qt-sim.mjs parity    [--no-build] [--out dir]       icon renderer vs the real QuickTooth.exe --render-icons
   bun qt-sim.mjs menu-check [--out dir]                   menu vs real Win32 menu captures
   bun qt-sim.mjs test      [--no-build] [--skip-parity]   everything: parity, menu, geometry, pixels, scenarios
@@ -158,7 +158,7 @@ async function main() {
           const res = await s.eval(async ({ phases, size, zoom }) => {
             const qt = window.qt, P = qt.kit.P;
             const step = qt.app.timers.effective(P.AnimFrameMs);
-            const plan = { Connecting: [1500, 0], Landing: [P.LandSeconds * 1000 + step, 1.4], Disconnecting: [P.DisconnectSeconds * 1000 + 600, 0], Cancelling: [P.CancelSeconds * 1000 + step, 1.4] };
+            const plan = { Connecting: [1500, 0], Landing: [P.LandSeconds * 1000 + step, 1.4], Disconnecting: [P.DisconnectSeconds * 1000 + 600, 0], Cancelling: [P.CancelSeconds * 1000 + step, 1.4], LowBattery: [P.LowBatteryAnimSeconds * 1000 + step, 0] };
             const rows = [];
             for (const light of [false, true]) for (const ph of phases) rows.push({ ph, light, frames: qt.frames({ phase: ph, durationMs: plan[ph][0], tracerOffset: plan[ph][1], light, size }) });
             const cols = Math.max(...rows.map((r) => r.frames.length));

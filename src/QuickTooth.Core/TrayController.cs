@@ -14,9 +14,10 @@ namespace QuickTooth;
 internal sealed class TrayController
 {
     public const int TIMER_ANIM = 1, TIMER_TIMEOUT = 2, TIMER_POLL = 3, TIMER_DEBOUNCE = 4,
-        TIMER_FASTPOLL = 5, TIMER_ADD_RETRY = 6, TIMER_PROMOTE = 7, TIMER_RESEND = 8, TIMER_BATTERY = 9;
+        TIMER_FASTPOLL = 5, TIMER_ADD_RETRY = 6, TIMER_PROMOTE = 7, TIMER_RESEND = 8, TIMER_BATTERY = 9,
+        TIMER_LOWBATTERY = 10;
     public static readonly int[] AllTimers = [TIMER_ANIM, TIMER_TIMEOUT, TIMER_POLL, TIMER_DEBOUNCE,
-        TIMER_FASTPOLL, TIMER_ADD_RETRY, TIMER_PROMOTE, TIMER_RESEND, TIMER_BATTERY];
+        TIMER_FASTPOLL, TIMER_ADD_RETRY, TIMER_PROMOTE, TIMER_RESEND, TIMER_BATTERY, TIMER_LOWBATTERY];
 
     public const int CMD_CONNECT = 1, CMD_DISCONNECT = 2, CMD_AUTOSTART = 3, CMD_EXIT = 4, CMD_STATUS = 9, CMD_DEVICE_BASE = 100;
 
@@ -52,6 +53,7 @@ internal sealed class TrayController
     private int _iconSize;
     private bool _lightTaskbar;
     private IconImage? _iconOn, _iconOff, _iconLow, _shownIcon;
+    private bool _lowShown;                  // the static icon last chosen was the low-battery one
     private string _shownTip = "";
 
     private List<BtDevice> _menuDevices = [];
@@ -174,6 +176,9 @@ internal sealed class TrayController
             case TIMER_RESEND:
                 _host.KillTimer(TIMER_RESEND);
                 _ = ResendConnect();
+                break;
+            case TIMER_LOWBATTERY: // replay the dot's animation while it's showing and nothing else animates
+                if (_anim == null && _pending == null && _lowShown) StartAnimation(AnimPhase.LowBattery);
                 break;
             case TIMER_BATTERY:
                 _host.SetTimer(TIMER_BATTERY, Tunables.BatteryCheckMs); // back to the periodic check
@@ -521,7 +526,15 @@ internal sealed class TrayController
         }
         else
         {
-            icon = _target?.Connected != true ? _iconOff : LowBattery() ? _iconLow : _iconOn;
+            bool low = _target?.Connected == true && LowBattery();
+            if (low != _lowShown)
+            {
+                _lowShown = low;
+                if (low && Tunables.LowBatteryReplayS > 0) _host.SetTimer(TIMER_LOWBATTERY, Tunables.LowBatteryReplayS * 1000);
+                else _host.KillTimer(TIMER_LOWBATTERY);
+                if (low && Tunables.LowBatteryAnimStyle != 0 && _iconSize > 0) { StartAnimation(AnimPhase.LowBattery); return; }
+            }
+            icon = _target?.Connected != true ? _iconOff : low ? _iconLow : _iconOn;
         }
         if (icon == null) return;
         string tip = StatusLine();

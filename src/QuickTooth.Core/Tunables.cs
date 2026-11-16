@@ -60,6 +60,10 @@ internal static class Tunables
     /// <summary>The low-battery dot's radius, and the gap cut around it, in pixels at 16 px (scaled with the icon).</summary>
     public static double LowBatteryDotRadius { get; set; } = 2.4;
     public static double LowBatteryDotGap { get; set; } = 0.8;
+    /// <summary>The dot's animation: which design (1–5, see IconRenderer.RenderLowBatteryAnim; 0 = none), how long it plays, and how often it replays (0 = only when the dot appears).</summary>
+    public static int LowBatteryAnimStyle { get; set; } = 0;
+    public static double LowBatteryAnimSeconds { get; set; } = 0.7;
+    public static int LowBatteryReplayS { get; set; } = 60;
 
     public const string OnDarkTaskbar = "#FFFFFF";
     public const string OnLightTaskbar = "#1A1A1A";
@@ -102,6 +106,9 @@ internal static class Tunables
         (nameof(Zoom), () => Zoom, v => Zoom = v),
         (nameof(LowBatteryDotRadius), () => LowBatteryDotRadius, v => LowBatteryDotRadius = v),
         (nameof(LowBatteryDotGap), () => LowBatteryDotGap, v => LowBatteryDotGap = v),
+        (nameof(LowBatteryAnimStyle), () => LowBatteryAnimStyle, v => LowBatteryAnimStyle = (int)v),
+        (nameof(LowBatteryAnimSeconds), () => LowBatteryAnimSeconds, v => LowBatteryAnimSeconds = v),
+        (nameof(LowBatteryReplayS), () => LowBatteryReplayS, v => LowBatteryReplayS = (int)v),
     ];
 
     private static readonly Dictionary<string, double> Defaults = Table.ToDictionary(t => t.Name, t => t.Get());
