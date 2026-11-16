@@ -26,7 +26,7 @@ from shapely import affinity
 Q = 48
 TIP_OPACITY = 0.55          # ear tip, connected
 LINE_OPACITY = 0.85         # hollow body outline, not connected (thin, so fairly bright)
-OUTLINE = 0.45               # outline width, 16 px space
+OUTLINE = 0.7                # outline width, 16 px space (0.45 was too faint at 16 px)
 CENTRE_GAP = 1.0             # between the two heads, 16 px space: the smallest that keeps two clear buds
 STEM_WIDTH = 2.0             # whole pixels
 HEAD_TILT = 0                # degrees, about the body's centre (0 = as drawn)

@@ -14,6 +14,10 @@ Check the relevant entries before changing a behaviour or look; don't reintroduc
 ## Look and animation
 
 - **MingCute icons** were replaced by the two-tone AirPods Pro glyphs.
+- **A 0.45 px outline** on the not-connected glyph was too faint to see in the taskbar: now 0.7 px.
+  Making the buds bigger instead was tried and rejected by the user. Stretching them 1.3× taller
+  looked thin and distorted; turning the heads 25° tip-down with longer stems (about a quarter
+  bigger) wasn't chosen. The pair already fills the 16 px width.
 - **Pulsing** while connecting: the user asked why it pulsed. Replaced, from five non-pulsing
   designs, by the glow ("tracer") with the earbuds snapping together and filling up when they land.
 - **The glow as a spot circling the head**, then as a disc as wide as the stem (both sides of the

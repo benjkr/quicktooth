@@ -10,8 +10,9 @@ Part of the specs (index in `AGENTS.md`). What the app does now; numbers are in
   `tools/airpods_pro_shapes.json`, one earbud traced from the SVG Repo drawing #324521.
   They're embedded in `QuickTooth.Core`.
 - Straight-line polygons only (`M`/`L`/`Z`): the renderer refuses curves. Each `<path>`'s
-  `fill-opacity` dims its part (outline 0.85, ear tips 1). The line glyph's
-  `data-tracer="cx cy rx ry"` is the head orbit; the glow's speed comes from it.
+  `fill-opacity` dims its part (outline 0.85, ear tips 1). The line glyph's outline is 0.7 px wide
+  at 16 px (`OUTLINE` in the generator), and its `data-tracer="cx cy rx ry"` is the head orbit;
+  the glow's speed comes from it.
 - Drawn at `Zoom` 1.125 of the SVG's 24-unit box, so the artwork fills the 16 px width. The
   generator lays the art out for that zoom (stems on whole pixels): change both together.
 
@@ -33,7 +34,7 @@ Part of the specs (index in `AGENTS.md`). What the app does now; numbers are in
   shrinking toward a zoom at which nothing clips. Then a glow runs around each earbud's outer
   outline (`TracerOutline` 1): a band `TracerLength` 6 units long reaching `TracerWidth` 1 either
   side of the edge, clockwise on the left earbud and mirrored on the right. It moves at the head
-  orbit's speed (a lap ≈ 1.46 s) and brightens the dimmed outline (85% → ~98%) on one side at a
+  orbit's speed (a lap ≈ 1.52 s) and brightens the dimmed outline (85% → ~98%) on one side at a
   time. `TracerOutline` 0 is the earlier spot (`SpotRadius` 3) circling the head.
 - **Landing** (connected): the earbuds close up in the first half of `LandSeconds` 0.5 s while
   the solid fills from the bottom; the glow fades.
