@@ -109,7 +109,7 @@ Simulator options (any command that opens it): `--scale 1|1.25|1.5|1.75|2`, `--s
 | `profile`, `theme`, `scale`, `tune`, `cli`, `bt`, `eval` | Change the world: `{"bt": ["externalDisconnect", "AirPods Pro"]}`, `{"cli": "--toggle"}`, `{"eval": "qt.restartExplorer()"}`. |
 
 State paths (see `final-state.json` of any run): `app.pending`, `app.anim`, `app.animT`, `app.tooltip`,
-`app.icon` (`{kind: static, state}` or `{kind: anim, phase, t}`), `app.timers`, `app.battery`,
+`app.icon` (`{kind: static, state}`, plus `lowBattery: true` with the orange dot, or `{kind: anim, phase, t}`), `app.timers`, `app.battery`,
 `shell.tooltip`, `shell.menu[i].items/hot/rect`, `shell.iconInOverflow`, `shell.flyoutOpen`,
 `bt[i].a2dp/hfp/link`, `t`.
 

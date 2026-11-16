@@ -106,7 +106,7 @@ internal static class NativeIcons
         int cellW = sizes.Sum() + pad * (sizes.Length + 1);
         int rowH = sizes.Max() + pad * 2;
         int width = cellW * themes.Length;
-        int height = rowH * 2;
+        int height = rowH * 3;
         var sheet = new byte[width * height * 4];
 
         for (int t = 0; t < themes.Length; t++)
@@ -118,9 +118,9 @@ internal static class NativeIcons
                 if (x / cellW != t) continue;
                 sheet[i * 4] = bg.B; sheet[i * 4 + 1] = bg.G; sheet[i * 4 + 2] = bg.R; sheet[i * 4 + 3] = 255;
             }
-            for (int s = 0; s < 2; s++)
+            for (int s = 0; s < 3; s++)
             {
-                var state = s == 0 ? IconState.Connected : IconState.Disconnected;
+                var state = (IconState)s; // rows: connected, disconnected, low battery
                 int x0 = t * cellW + pad;
                 foreach (int size in sizes)
                 {
@@ -139,7 +139,7 @@ internal static class NativeIcons
 
         // Each theme/state at the current 16 px as a standalone file.
         foreach (var (name, light, bg) in themes)
-            foreach (var state in new[] { IconState.Connected, IconState.Disconnected })
+            foreach (var state in new[] { IconState.Connected, IconState.Disconnected, IconState.LowBattery })
             {
                 var hIcon = CreateIcon(state, light, 16);
                 var px = DrawIconOnBackground(hIcon, 16, bg);

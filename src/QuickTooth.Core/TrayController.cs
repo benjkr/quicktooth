@@ -51,7 +51,7 @@ internal sealed class TrayController
     private int _promoteAttempts;
     private int _iconSize;
     private bool _lightTaskbar;
-    private IconImage? _iconOn, _iconOff, _shownIcon;
+    private IconImage? _iconOn, _iconOff, _iconLow, _shownIcon;
     private string _shownTip = "";
 
     private List<BtDevice> _menuDevices = [];
@@ -439,6 +439,10 @@ internal sealed class TrayController
         return _battery.Text;
     }
 
+    /// <summary>The tooltip shows a battery reading, the buds are at or below the low mark and not charging.</summary>
+    private bool LowBattery() =>
+        BatteryText() != null && !_battery!.BudsCharging && _battery.Buds is int level && level <= Tunables.LowBatteryPercent;
+
     /// <summary>Tooltip and menu header, e.g. "AirPods Pro — Connected · 30%".</summary>
     public string StatusLine() =>
         BatteryText() is string battery ? $"{DeviceLabel()} — {StatusText()} · {battery}" : $"{DeviceLabel()} — {StatusText()}";
@@ -517,7 +521,7 @@ internal sealed class TrayController
         }
         else
         {
-            icon = _target?.Connected == true ? _iconOn : _iconOff;
+            icon = _target?.Connected != true ? _iconOff : LowBattery() ? _iconLow : _iconOn;
         }
         if (icon == null) return;
         string tip = StatusLine();
@@ -572,9 +576,10 @@ internal sealed class TrayController
         int size = _host.IconSize;
         var on = new IconImage(IconRenderer.RenderBgra(IconState.Connected, _lightTaskbar, size), size, "{\"kind\":\"static\",\"state\":\"connected\"}");
         var off = new IconImage(IconRenderer.RenderBgra(IconState.Disconnected, _lightTaskbar, size), size, "{\"kind\":\"static\",\"state\":\"disconnected\"}");
-        var old = new[] { _iconOn, _iconOff };
+        var low = new IconImage(IconRenderer.RenderBgra(IconState.LowBattery, _lightTaskbar, size), size, "{\"kind\":\"static\",\"state\":\"connected\",\"lowBattery\":true}");
+        var old = new[] { _iconOn, _iconOff, _iconLow };
         bool rebuilt = _iconOn != null;
-        (_iconOn, _iconOff, _iconSize) = (on, off, size);
+        (_iconOn, _iconOff, _iconLow, _iconSize) = (on, off, low, size);
         if (rebuilt) Log.Info($"icons rebuilt: {size} px, {(_lightTaskbar ? "light" : "dark")} taskbar");
         UpdateIcon(force: true); // the shell has the new icon before the old one goes
         foreach (var img in old)

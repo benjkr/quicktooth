@@ -18,6 +18,9 @@ Check the relevant entries before changing a behaviour or look; don't reintroduc
   Making the buds bigger instead was tried and rejected by the user. Stretching them 1.3× taller
   looked thin and distorted; turning the heads 25° tip-down with longer stems (about a quarter
   bigger) wasn't chosen. The pair already fills the 16 px width.
+- **Low battery**: chosen from five designs, an orange dot in the corner (shown in red first; the
+  user picked orange). Not chosen: a small battery badge cut into the right stem, the whole icon in
+  red, a level bar under the buds, and the stems as red/faint gauges.
 - **Pulsing** while connecting: the user asked why it pulsed. Replaced, from five non-pulsing
   designs, by the glow ("tracer") with the earbuds snapping together and filling up when they land.
 - **The glow as a spot circling the head**, then as a disc as wide as the stem (both sides of the

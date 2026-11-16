@@ -4,7 +4,8 @@ using System.Text.RegularExpressions;
 
 namespace QuickTooth;
 
-internal enum IconState { Connected, Disconnected }
+/// <summary>LowBattery: connected, with the low-battery dot.</summary>
+internal enum IconState { Connected, Disconnected, LowBattery }
 
 internal enum AnimPhase { Connecting, Landing, Disconnecting, Cancelling }
 
@@ -202,6 +203,17 @@ internal static partial class IconRenderer
                 FillPolygons(layer.Contours, Quantize(opacity * layer.Opacity), xf, clip);
         }
 
+        /// <summary>Fills closed polygons (nonzero) at <paramref name="opacity"/>.</summary>
+        public void Fill(Pt[][] contours, double opacity, Xf xf) => FillPolygons(contours, Quantize(opacity), xf, Clip.None);
+
+        /// <summary>Clears this canvas inside a polygon (a knock-out), anti-aliased at its edge.</summary>
+        public void Erase(Pt[] contour, Xf xf)
+        {
+            var mask = new Canvas(Size);
+            mask.Fill([contour], 1, xf);
+            for (int i = 0; i < Alpha.Length; i++) Alpha[i] *= 1 - Math.Min(mask.Alpha[i], 1);
+        }
+
         /// <summary>Brush alpha as an 8-bit value, as a 32-bit ARGB brush would hold it.</summary>
         private static double Quantize(double opacity) => Math.Round(255 * Math.Clamp(opacity, 0, 1)) / 255;
 
@@ -331,8 +343,43 @@ internal static partial class IconRenderer
     public static byte[] RenderBgra(IconState state, bool lightTaskbar, int size)
     {
         var canvas = new Canvas(size);
-        canvas.Draw(state == IconState.Connected ? Fill : Line, 1, GlyphTransform(size, Zoom), Clip.None);
-        return canvas.ToBgra(lightTaskbar ? OnLightTaskbar : OnDarkTaskbar);
+        canvas.Draw(state == IconState.Disconnected ? Line : Fill, 1, GlyphTransform(size, Zoom), Clip.None);
+        var bgra = canvas.ToBgra(lightTaskbar ? OnLightTaskbar : OnDarkTaskbar);
+        if (state != IconState.LowBattery) return bgra;
+
+        // Low battery: an orange dot in the bottom-right corner, with a ring cut out of the artwork
+        // around it (the right stem's tip) so it stands apart. Laid out on a 16-unit grid (whole units
+        // = whole pixels at 16 px), scaled to the icon size.
+        var grid = new Xf(size / 16.0, 0, 0);
+        double r = Tunables.LowBatteryDotRadius;
+        canvas.Erase(Disc(LowDotX, LowDotY, r + Tunables.LowBatteryDotGap), grid);
+        var dot = new Canvas(size);
+        dot.Fill([Disc(LowDotX, LowDotY, r)], 1, grid);
+        return Over(canvas.ToBgra(lightTaskbar ? OnLightTaskbar : OnDarkTaskbar), dot.ToBgra(lightTaskbar ? LowOnLightTaskbar : LowOnDarkTaskbar));
+    }
+
+    public static readonly Rgb LowOnDarkTaskbar = new(0xFF, 0x8C, 0x00);   // Tunables.LowBatteryOnDark
+    public static readonly Rgb LowOnLightTaskbar = new(0xCA, 0x50, 0x10);  // Tunables.LowBatteryOnLight
+
+    // The dot's centre on the 16-unit grid: the free bottom-right corner below the right head.
+    private const double LowDotX = 13.5, LowDotY = 13;
+
+    private static Pt[] Disc(double cx, double cy, double r, int n = 48) =>
+        Enumerable.Range(0, n).Select(k => new Pt(cx + r * Math.Cos(2 * Math.PI * k / n), cy + r * Math.Sin(2 * Math.PI * k / n))).ToArray();
+
+    /// <summary>Straight-alpha "source over" of <paramref name="top"/> onto <paramref name="bottom"/> (in place).</summary>
+    private static byte[] Over(byte[] bottom, byte[] top)
+    {
+        for (int i = 0; i < bottom.Length; i += 4)
+        {
+            double sa = top[i + 3] / 255.0;
+            if (sa == 0) continue;
+            double da = bottom[i + 3] / 255.0, oa = sa + da * (1 - sa);
+            for (int c = 0; c < 3; c++)
+                bottom[i + c] = (byte)Math.Round((top[i + c] * sa + bottom[i + c] * da * (1 - sa)) / oa);
+            bottom[i + 3] = (byte)Math.Round(255 * oa);
+        }
+        return bottom;
     }
 
     // ------------------------------------------------------------------ pending animation ("tracer")

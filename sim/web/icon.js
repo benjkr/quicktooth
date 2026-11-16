@@ -12,7 +12,7 @@ export class IconRenderer {
   constructor(core, P) { this.core = core; this.P = P; }
 
   /** Static icon: 'connected' (fill glyph) or 'disconnected' (line glyph). Returns ImageData (straight alpha). */
-  renderStatic(state, light, size) { return toImage(this.core.RenderStatic(state === 'connected', !!light, size), size); }
+  renderStatic(state, light, size) { return toImage(this.core.RenderStatic(state, !!light, size), size); }
 
   /** One frame of the pending animation. t: seconds into the phase; tracerT: tracer seconds. */
   renderAnim(phase, t, tracerT, light, size) { return toImage(this.core.RenderAnim(phase, t, tracerT, !!light, size), size); }
