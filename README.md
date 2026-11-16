@@ -42,7 +42,7 @@ Two smaller things help as well:
 ## What you get
 
 - **An AirPods Pro icon in the taskbar.** Solid with dimmed ear tips when connected; the reverse when not (hollow, dimmed pods with solid ear tips). **Click** it to connect or disconnect.
-- **A short animation while it works.** A light circles each earbud; when connected, the earbuds snap together and fill in.
+- **A short animation while it works.** A short glow runs around the outline of each earbud; when connected, the earbuds snap together and fill in.
 - **Battery level** in the tooltip, e.g. "AirPods Pro — Connected · 80%", read from the AirPods' own Bluetooth broadcast.
 - **A right-click menu.** Connect/Disconnect, pick which Bluetooth headset the icon controls, and Start with Windows.
 - **It matches your taskbar.** White on a dark taskbar, dark on a light one, sharp at any display scaling.

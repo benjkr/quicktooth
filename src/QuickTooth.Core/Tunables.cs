@@ -44,6 +44,11 @@ internal static class Tunables
     public static double Travel { get; set; } = 1.9;        // how far each earbud moves apart (24-unit glyph space)
     public static double TracerPeriod { get; set; } = 1.1;  // seconds per lap
     public static double SpotRadius { get; set; } = 3.0;
+    /// <summary>Tracer path: 1 = a short glow running around each earbud's whole outline (head and stem); 0 = the earlier spot circling each head.</summary>
+    public static int TracerOutline { get; set; } = 1;
+    /// <summary>Outline tracer: how long the lit stretch is, and how far it reaches either side of the edge (glyph units).</summary>
+    public static double TracerLength { get; set; } = 6.0;
+    public static double TracerWidth { get; set; } = 1.0;
     /// <summary>
     /// How much bigger than the SVG's 24-unit box the glyph is drawn. The artwork spans x 1.33–22.67 /
     /// y 5–18.7, so zoom 1.125 makes it fill the full 16 px width (16 × 10.3 px). tools/airpods_glyph.py
@@ -83,6 +88,9 @@ internal static class Tunables
         (nameof(Travel), () => Travel, v => Travel = v),
         (nameof(TracerPeriod), () => TracerPeriod, v => TracerPeriod = v),
         (nameof(SpotRadius), () => SpotRadius, v => SpotRadius = v),
+        (nameof(TracerOutline), () => TracerOutline, v => TracerOutline = (int)v),
+        (nameof(TracerLength), () => TracerLength, v => TracerLength = v),
+        (nameof(TracerWidth), () => TracerWidth, v => TracerWidth = v),
         (nameof(Zoom), () => Zoom, v => Zoom = v),
     ];
 

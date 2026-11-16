@@ -174,12 +174,17 @@ internal static partial class IconRenderer
     }
 
     /// <summary>A clip in glyph units: a rectangle, optionally intersected with a circle.</summary>
-    private readonly record struct Clip(double X0, double Y0, double X1, double Y1, double Cx = 0, double Cy = 0, double R = 0)
+    /// <summary>
+    /// A clip in glyph units: a rectangle, optionally intersected with the union of equal discs (one
+    /// disc for a round spot; a dense row of them for a band along a path).
+    /// </summary>
+    private readonly record struct Clip(double X0, double Y0, double X1, double Y1, Pt[]? Dots = null, double DotR = 0)
     {
         public static readonly Clip None = new(double.NegativeInfinity, double.NegativeInfinity, double.PositiveInfinity, double.PositiveInfinity);
         public Clip Intersect(double x0, double y0, double x1, double y1) =>
             this with { X0 = Math.Max(X0, x0), Y0 = Math.Max(Y0, y0), X1 = Math.Min(X1, x1), Y1 = Math.Min(Y1, y1) };
-        public Clip WithCircle(double cx, double cy, double r) => this with { Cx = cx, Cy = cy, R = r };
+        public Clip WithCircle(double cx, double cy, double r) => this with { Dots = [new Pt(cx, cy)], DotR = r };
+        public Clip WithDots(Pt[] dots, double r) => this with { Dots = dots, DotR = r };
     }
 
     private sealed class Canvas(int size)
@@ -189,6 +194,7 @@ internal static partial class IconRenderer
         public readonly double[] Alpha = new double[size * size]; // single colour, so alpha is all we need
         private readonly double[] _cov = new double[size * size];
         private readonly List<(double X, int Dir)> _xs = new();
+        private readonly List<(double Lo, double Hi)> _clip = new();
 
         public void Draw(Glyph glyph, double opacity, Xf xf, Clip clip)
         {
@@ -205,7 +211,8 @@ internal static partial class IconRenderer
             Array.Clear(_cov);
             // The clip in pixel space (the transform has no rotation, so rectangles and circles stay so).
             double cx0 = xf.X(clip.X0), cx1 = xf.X(clip.X1), cy0 = xf.Y(clip.Y0), cy1 = xf.Y(clip.Y1);
-            double ccx = xf.X(clip.Cx), ccy = xf.Y(clip.Cy), cr = clip.R * xf.S;
+            var dots = clip.Dots?.Select(d => (X: xf.X(d.X), Y: xf.Y(d.Y))).ToArray();
+            double dr = clip.DotR * xf.S;
 
             var edges = new List<(double X0, double Y0, double X1, double Y1)>();
             double minY = double.PositiveInfinity, maxY = double.NegativeInfinity;
@@ -228,14 +235,33 @@ internal static partial class IconRenderer
                     double y = py + (s + 0.5) / Sub;
                     if (y < cy0 || y >= cy1) continue;
                     double lo = Math.Max(0, cx0), hi = Math.Min(Size, cx1);
-                    if (cr > 0)
-                    {
-                        double dy = y - ccy;
-                        if (Math.Abs(dy) >= cr) continue;
-                        double hw = Math.Sqrt(cr * cr - dy * dy);
-                        lo = Math.Max(lo, ccx - hw); hi = Math.Min(hi, ccx + hw);
-                    }
                     if (lo >= hi) continue;
+                    // Where this sub-scanline is inside the clip: [lo, hi), or its overlap with the discs.
+                    _clip.Clear();
+                    if (dots == null)
+                    {
+                        _clip.Add((lo, hi));
+                    }
+                    else
+                    {
+                        foreach (var d in dots)
+                        {
+                            double dy = y - d.Y;
+                            if (Math.Abs(dy) >= dr) continue;
+                            double hw = Math.Sqrt(dr * dr - dy * dy);
+                            double a = Math.Max(lo, d.X - hw), b = Math.Min(hi, d.X + hw);
+                            if (a < b) _clip.Add((a, b));
+                        }
+                        if (_clip.Count == 0) continue;
+                        _clip.Sort((p, q) => p.Lo.CompareTo(q.Lo));
+                        int m = 0;
+                        for (int k = 1; k < _clip.Count; k++)
+                        {
+                            if (_clip[k].Lo <= _clip[m].Hi) _clip[m] = (_clip[m].Lo, Math.Max(_clip[m].Hi, _clip[k].Hi));
+                            else _clip[++m] = _clip[k];
+                        }
+                        _clip.RemoveRange(m + 1, _clip.Count - m - 1);
+                    }
 
                     _xs.Clear();
                     foreach (var e in edges)
@@ -254,7 +280,8 @@ internal static partial class IconRenderer
                         int before = winding;
                         winding += dir;
                         if (before == 0 && winding != 0) spanStart = x;
-                        else if (before != 0 && winding == 0) AddSpan(py, Math.Max(spanStart, lo), Math.Min(x, hi));
+                        else if (before != 0 && winding == 0)
+                            foreach (var (cl, ch) in _clip) AddSpan(py, Math.Max(spanStart, cl), Math.Min(x, ch));
                     }
                 }
             }
@@ -310,8 +337,8 @@ internal static partial class IconRenderer
 
     // ------------------------------------------------------------------ pending animation ("tracer")
     //
-    // Connecting:    the buds spring apart, then a bright spot circles each earbud (steady brightness,
-    //                never loops back to an earlier look) until the connection lands.
+    // Connecting:    the buds spring apart, then a short glow runs around each earbud's outline (head
+    //                and stem; steady brightness, never loops back to an earlier look) until the connection lands.
     // Landing:       the buds close together while the solid fills up from the bottom.
     // Disconnecting: the solid drains top-down while the buds part, then the outline settles back;
     //                if the disconnect is still pending after that, the tracer runs on the outline.
@@ -350,6 +377,102 @@ internal static partial class IconRenderer
             double r = (12 - b.Left) / 2;
             return (b.Left + r, b.Top + r, r, r);
         }
+    }
+
+    /// <summary>
+    /// Where the left earbud's tracer is after <paramref name="tracerT"/> seconds (glyph units): on an
+    /// ellipse around the head (<see cref="Orbit"/>), one lap per <see cref="Tunables.TracerPeriod"/>.
+    /// </summary>
+    private static Pt TracerSpot(double tracerT)
+    {
+        var o = Orbit;
+        double angle = 2 * Math.PI * tracerT / TracerPeriod;
+        return new Pt(o.Cx + o.Rx * Math.Sin(angle), o.Cy - o.Ry * Math.Cos(angle));
+    }
+
+    /// <summary>
+    /// <see cref="Tunables.TracerOutline"/> = 1: the lit stretch of the left earbud's outer outline after
+    /// <paramref name="tracerT"/> seconds, as a dense row of points on the outline. It runs clockwise
+    /// from the top of the head at the head orbit's speed (so a lap takes as much longer as the outline
+    /// is), <see cref="Tunables.TracerLength"/> long and reaching <see cref="Tunables.TracerWidth"/>
+    /// either side of the edge: narrower than the stem, so the far side of the stem stays dark.
+    /// </summary>
+    private static Pt[] TracerBand(double tracerT)
+    {
+        var o = Orbit;
+        double h = Math.Pow(o.Rx - o.Ry, 2) / Math.Pow(o.Rx + o.Ry, 2);
+        double orbitLength = Math.PI * (o.Rx + o.Ry) * (1 + 3 * h / (10 + Math.Sqrt(4 - 3 * h))); // Ramanujan
+        var path = OutlinePath;
+        double centre = tracerT * orbitLength / TracerPeriod;
+        double length = Math.Min(Tunables.TracerLength, path.Length);
+        int n = Math.Max(2, (int)Math.Ceiling(length / 0.2) + 1);
+        var pts = new Pt[n];
+        for (int k = 0; k < n; k++) pts[k] = PointAt(path, centre - length / 2 + length * k / (n - 1));
+        return pts;
+    }
+
+    /// <summary>The point <paramref name="s"/> units along the closed outline (wraps around).</summary>
+    private static Pt PointAt(Polyline path, double s)
+    {
+        s %= path.Length;
+        if (s < 0) s += path.Length;
+        int i = Array.BinarySearch(path.Distance, s);
+        if (i < 0) i = ~i - 1;
+        i = Math.Clamp(i, 0, path.Points.Length - 2);
+        double u = (s - path.Distance[i]) / Math.Max(1e-9, path.Distance[i + 1] - path.Distance[i]);
+        var a = path.Points[i]; var b = path.Points[i + 1];
+        return new Pt(a.X + (b.X - a.X) * u, a.Y + (b.Y - a.Y) * u);
+    }
+
+    private sealed record Polyline(Pt[] Points, double[] Distance, double Length);
+
+    private static (Glyph Source, Polyline Path)? _outline;
+
+    /// <summary>
+    /// The left earbud's outline as a closed polyline: the largest contour of the line glyph left of the
+    /// centre (the body and stem; the ear tip sits on it). Starts at its top, runs clockwise on screen.
+    /// </summary>
+    private static Polyline OutlinePath
+    {
+        get
+        {
+            var line = Line;
+            if (_outline is { } cached && cached.Source == line) return cached.Path;
+            Pt[]? best = null;
+            double bestArea = 0;
+            foreach (var layer in line.Layers)
+                foreach (var c in layer.Contours)
+                {
+                    if (c.Max(p => p.X) > 12) continue;
+                    double area = Math.Abs(SignedArea(c));
+                    if (area > bestArea) { bestArea = area; best = c; }
+                }
+            if (best == null) throw new InvalidOperationException("no left-earbud contour in the line glyph");
+
+            var pts = best.ToList();
+            if (SignedArea(best) < 0) pts.Reverse(); // y points down: positive shoelace area = clockwise on screen
+            int top = 0;
+            for (int k = 1; k < pts.Count; k++)
+                if (pts[k].Y < pts[top].Y || (pts[k].Y == pts[top].Y && pts[k].X < pts[top].X)) top = k;
+            var ring = pts.Skip(top).Concat(pts.Take(top)).Append(pts[top]).ToArray();
+            var dist = new double[ring.Length];
+            for (int k = 1; k < ring.Length; k++)
+                dist[k] = dist[k - 1] + Math.Sqrt(Math.Pow(ring[k].X - ring[k - 1].X, 2) + Math.Pow(ring[k].Y - ring[k - 1].Y, 2));
+            var path = new Polyline(ring, dist, dist[^1]);
+            _outline = (line, path);
+            return path;
+        }
+    }
+
+    private static double SignedArea(Pt[] c)
+    {
+        double sum = 0;
+        for (int k = 0; k < c.Length; k++)
+        {
+            var a = c[k]; var b = c[(k + 1) % c.Length];
+            sum += a.X * b.Y - b.X * a.Y;
+        }
+        return sum / 2;
     }
 
     /// <summary>Has the phase played out at <paramref name="t"/> seconds (TrayController.AdvanceAnimation)?</summary>
@@ -413,8 +536,8 @@ internal static partial class IconRenderer
         double poseZoom = Zoom + (ApartZoom - Zoom) * (dx / Travel);
         var art = ArtBounds;
         double yLevel = art.Bottom - level * (art.Bottom - art.Top);
-        double angle = 2 * Math.PI * tracerT / TracerPeriod;
-        var orbit = Orbit;
+        var spotLeft = TracerSpot(tracerT);
+        var bandLeft = Tunables.TracerOutline >= 0.5 ? TracerBand(tracerT) : null;
 
         var canvas = new Canvas(size);
         var baseXf = GlyphTransform(size, poseZoom);
@@ -428,10 +551,18 @@ internal static partial class IconRenderer
             canvas.Draw(Line, 1, xf, above);
             if (tracer > 0.001)
             {
-                // Left spot runs clockwise, right counter-clockwise (mirrored), around each head.
-                double cx = left ? orbit.Cx : 24 - orbit.Cx, dir = left ? 1 : -1;
-                var spot = new Pt(cx + dir * orbit.Rx * Math.Sin(angle), orbit.Cy - orbit.Ry * Math.Cos(angle));
-                canvas.Draw(Line, tracer, xf, above.WithCircle(spot.X, spot.Y, SpotRadius));
+                // Left spot runs clockwise, right counter-clockwise (mirrored): around each head, or along each outline.
+                if (bandLeft != null)
+                {
+                    // A short stretch of the outline lights up; mirrored for the right earbud.
+                    var band = left ? bandLeft : bandLeft.Select(p => new Pt(24 - p.X, p.Y)).ToArray();
+                    canvas.Draw(Line, tracer, xf, above.WithDots(band, Tunables.TracerWidth));
+                }
+                else
+                {
+                    var spot = left ? spotLeft : new Pt(24 - spotLeft.X, spotLeft.Y);
+                    canvas.Draw(Line, tracer, xf, above.WithCircle(spot.X, spot.Y, SpotRadius));
+                }
             }
 
             // Below the fill line: solid.
