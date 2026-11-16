@@ -41,7 +41,7 @@ Two smaller things help as well:
 
 ## What you get
 
-- **An AirPods icon in the taskbar.** It's solid when connected and a dim outline when not. **Click** it to connect or disconnect.
+- **An AirPods Pro icon in the taskbar.** Solid with dimmed ear tips when connected; the reverse when not (hollow, dimmed pods with solid ear tips). **Click** it to connect or disconnect.
 - **A short animation while it works.** A light circles each earbud; when connected, the earbuds snap together and fill in.
 - **Battery level** in the tooltip, e.g. "AirPods Pro — Connected · 80%", read from the AirPods' own Bluetooth broadcast.
 - **A right-click menu.** Connect/Disconnect, pick which Bluetooth headset the icon controls, and Start with Windows.
@@ -97,8 +97,10 @@ The source is in `src/QuickTooth/`:
 | `IconRenderer.cs` | drawing the icons |
 | `Native/` | Windows interop |
 
+`tools/airpods_glyph.py` regenerates the tray icons (`assets/airpods-pro-*.svg`); it needs `pip install shapely`.
+
 ## Credits
 
-- **AirPods icons:** from [MingCute Icon](https://github.com/mingcute-design/mingcute-icons), licensed under the Apache License 2.0 (copy in [`assets/MingCute-LICENSE.txt`](assets/MingCute-LICENSE.txt)).
+- **AirPods Pro icons:** built from the shapes of one earbud in the "AirPods Pro" line drawing on [SVG Repo](https://www.svgrepo.com/svg/324521/airpods-pro) (#324521), traced into `tools/airpods_pro_shapes.json` and laid out for the 16 px tray icon by `tools/airpods_glyph.py`.
 - **Connect/disconnect commands:** the driver commands were first used this way by [ToothTray](https://github.com/m2jean/ToothTray).
 - **Battery format:** the AirPods status broadcast follows community reverse engineering, e.g. OpenPods and furiousMAC/continuity.

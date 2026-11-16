@@ -25,8 +25,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\..\assets\airpods-fill.svg" LogicalName="airpods-fill.svg" />
-    <EmbeddedResource Include="..\..\assets\airpods-line.svg" LogicalName="airpods-line.svg" />
+    <EmbeddedResource Include="..\..\assets\airpods-pro-fill.svg" LogicalName="airpods-pro-fill.svg" />
+    <EmbeddedResource Include="..\..\assets\airpods-pro-line.svg" LogicalName="airpods-pro-line.svg" />
   </ItemGroup>
 
 </Project>
